@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Algebra Structure & Error Analysis — OST Mastery</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+
+<script>
+// ---------- UTIL ----------
+function shuffle(a){
+  const arr=[...a];
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function norm(s){
+  return String(s).replace(/\s+/g,'').toLowerCase();
+}
+
+// ---------- CALCULATOR ----------
+function createCalc(inputRef){
+  const wrap=document.createElement('div');
+  const keys=['7','8','9','4','5','6','1','2','3','0','+','-','*','/','⌫','clear'];
+
+  keys.forEach(k=>{
+    const b=document.createElement('button');
+    b.textContent=k;
+    b.className='kbtn';
+    b.onclick=()=>{
+      const el=inputRef();
+      if(!el)return;
+
+      if(k==='⌫'){el.value=el.value.slice(0,-1);return;}
+      if(k==='clear'){el.value='';return;}
+      el.value+=k;
+    };
+    wrap.appendChild(b);
+  });
+
+  return wrap;
+}
+
+// ---------- QUESTION BANK (30) ----------
+const bank = [
+
+{type:'mc',
+q:`A student solves: 2(x + 3) = 2x + 3. What mistake was made?`,
+choices:[
+"Did not distribute to both terms",
+"Added instead of multiplied",
+"Incorrect subtraction",
+"No mistake"
+],
+a:0,
+exp:"Distribution must apply to both x and 3"
+},
+
+{type:'mc',
+q:`Simplify: 3x + 2x`,
+choices:["5x","6x","5","x²"],
+a:0,
+exp:"Combine like terms"
+},
+
+{type:'mc',
+q:`A student says: 4(x + 2) = 4x + 2. What is wrong?`,
+choices:[
+"Forgot to multiply 4 × 2",
+"Multiplied incorrectly",
+"Should subtract instead",
+"Nothing is wrong"
+],
+a:0,
+exp:"Must distribute to both terms"
+},
+
+{type:'input',
+q:`Simplify: 5(x + 2)`,
+a:['5x+10'],
+exp:"Distribute 5 to both terms"
+},
+
+{type:'mc',
+q:`Simplify: 6x - 2x`,
+choices:["4x","8x","-4x","6x"],
+a:0,
+exp:"Combine like terms"
+},
+
+{type:'mc',
+q:`A student simplifies: 2x² + 3x = 5x³. What mistake?`,
+choices:[
+"Added unlike terms",
+"Incorrect exponent rule",
+"Multiplication error",
+"No mistake"
+],
+a:0,
+exp:"Cannot combine unlike terms"
+},
+
+{type:'input',
+q:`Simplify: 3(x - 4)`,
+a:['3x-12'],
+exp:"Distribute 3"
+},
+
+{type:'mc',
+q:`Which is correct?`,
+choices:[
+"2x + 3x = 5x",
+"2x + 3x = 6x",
+"2x + 3x = 5",
+"2x + 3x = x²"
+],
+a:0,
+exp:"Like terms combine"
+},
+
+{type:'mc',
+q:`A student says: (x + 2)² = x² + 4. What mistake?`,
+choices:[
+"Forgot middle term",
+"Incorrect exponent",
+"Wrong addition",
+"No mistake"
+],
+a:0,
+exp:"Should be x² + 4x + 4"
+},
+
+{type:'input',
+q:`Simplify: 2x + 3 + 4x`,
+a:['6x+3'],
+exp:"Combine like terms"
+},
+
+{type:'mc',
+q:`Solve: x + 5 = 10`,
+choices:["5","15","-5","10"],
+a:0,
+exp:"Subtract 5"
+},
+
+{type:'mc',
+q:`A student solves x - 3 = 7 → x = 4. What mistake?`,
+choices:[
+"Added instead of subtracting",
+"Subtracted incorrectly",
+"Correct solution",
+"Multiplied instead"
+],
+a:0,
+exp:"Should add 3 → x = 10"
+},
+
+{type:'input',
+q:`Solve: x + 6 = 9`,
+a:['3'],
+exp:"Subtract 6"
+},
+
+{type:'mc',
+q:`Simplify: 2(3x + 4)`,
+choices:["6x + 8","6x + 4","3x + 8","6x + 12"],
+a:0,
+exp:"Distribute 2"
+},
+
+{type:'input',
+q:`Simplify: 4x + 2x + 3`,
+a:['6x+3'],
+exp:"Combine like terms"
+},
+
+{type:'mc',
+q:`A student writes: 5x + 2 = 7x. What mistake?`,
+choices:[
+"Combined unlike terms incorrectly",
+"Multiplied incorrectly",
+"Added incorrectly",
+"No mistake"
+],
+a:0,
+exp:"Constants and variables are different"
+},
+
+{type:'input',
+q:`Solve: 2x = 10`,
+a:['5'],
+exp:"Divide by 2"
+},
+
+{type:'mc',
+q:`Simplify: 3x + 4 + 2x - 1`,
+choices:[
+"5x + 3",
+"5x + 5",
+"6x + 3",
+"3x + 3"
+],
+a:0,
+exp:"Combine like terms"
+},
+
+{type:'mc',
+q:`A student simplifies: 2(x + 3x) = 2x + 3x. What mistake?`,
+choices:[
+"Did not combine inside first",
+"Incorrect multiplication",
+"Added incorrectly",
+"No mistake"
+],
+a:0,
+exp:"Should combine 4x then multiply"
+},
+
+{type:'input',
+q:`Simplify: 2(x + 3x)`,
+a:['8x'],
+exp:"Combine then multiply"
+},
+
+{type:'mc',
+q:`Which shows correct distribution?`,
+choices:[
+"3(x + 2) = 3x + 6",
+"3(x + 2) = 3x + 2",
+"3(x + 2) = x + 6",
+"3(x + 2) = x + 2"
+],
+a:0,
+exp:"Multiply both terms"
+},
+
+{type:'input',
+q:`Solve: 3x = 15`,
+a:['5'],
+exp:"Divide by 3"
+},
+
+{type:'mc',
+q:`Simplify: 5x - x`,
+choices:["4x","6x","5","x"],
+a:0,
+exp:"Combine like terms"
+},
+
+{type:'input',
+q:`Simplify: 7(x + 1)`,
+a:['7x+7'],
+exp:"Distribute 7"
+},
+
+{type:'mc',
+q:`A student says: 2x × 3x = 5x². What mistake?`,
+choices:[
+"Added instead of multiplying coefficients",
+"Incorrect exponent",
+"Subtracted incorrectly",
+"No mistake"
+],
+a:0,
+exp:"2 × 3 = 6, not 5"
+},
+
+{type:'input',
+q:`Simplify: 2x × 3x`,
+a:['6x^2','6x2'],
+exp:"Multiply coefficients and variables"
+},
+
+{type:'mc',
+q:`Simplify: x + x + x`,
+choices:["3x","x³","x²","2x"],
+a:0,
+exp:"Add like terms"
+},
+
+{type:'input',
+q:`Simplify: 9x - 4x`,
+a:['5x'],
+exp:"Combine like terms"
+},
+
+{type:'mc',
+q:`Which is correct?`,
+choices:[
+"4(x + 5) = 4x + 20",
+"4(x + 5) = 4x + 5",
+"4(x + 5) = x + 20",
+"4(x + 5) = x + 5"
+],
+a:0,
+exp:"Distribute 4"
+},
+
+{type:'input',
+q:`Solve: x - 2 = 6`,
+a:['8'],
+exp:"Add 2"
+}
+
+];
+
+// ---------- GAME ----------
+const questions = shuffle(bank);
+let i=0, correct=0, attempts=0, activeInput=null;
+
+const app=document.getElementById('app');
+
+function render(){
+  const q=questions[i];
+
+  if(!q){
+    app.innerHTML=`<h2>Complete!</h2>
+    Accuracy: ${Math.round(correct/attempts*100)}%`;
+    return;
+  }
+
+  let html=`<div class="panel">
+  <h2>Question ${i+1}/30</h2>
+  <div>${q.q}</div>`;
+
+  if(q.type==='mc'){
+    const choices=shuffle(q.choices.map((c,idx)=>({c,idx})));
+    q._choices=choices;
+
+    html+=choices.map(c=>`
+    <label class="choice">
+    <input type="radio" name="c" value="${c.idx}">
+    ${c.c}
+    </label>`).join('');
+
+    html+=`<button id="submit">Submit</button>`;
+  }
+
+  if(q.type==='input'){
+    html+=`
+    <input id="input">
+    <div id="calc"></div>
+    <button id="submit">Submit</button>`;
+  }
+
+  html+=`<div id="feedback"></div></div>`;
+  app.innerHTML=html;
+
+  if(q.type==='input'){
+    activeInput=document.getElementById('input');
+    document.getElementById('calc')
+      .appendChild(createCalc(()=>activeInput));
+  }
+
+  document.getElementById('submit').onclick=check;
+}
+
+function check(){
+  const q=questions[i];
+  attempts++;
+  let ok=false;
+
+  if(q.type==='mc'){
+    const sel=document.querySelector('input[name="c"]:checked');
+    if(!sel) return;
+    ok=Number(sel.value)===q.a;
+  }
+
+  if(q.type==='input'){
+    ok=q.a.some(a=>norm(a)===norm(activeInput.value));
+  }
+
+  const fb=document.getElementById('feedback');
+
+  if(ok){
+    correct++;
+    fb.innerHTML="Correct! "+q.exp;
+    setTimeout(()=>{i++;render();},1500);
+  }else{
+    fb.innerHTML="Try again: "+q.exp;
+  }
+}
+
+render();
+</script>
+
+</body>
+</html>
