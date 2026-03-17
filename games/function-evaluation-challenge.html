@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Function Evaluation Challenge — Algebra I OST Mastery Hub</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+
+<script>
+function shuffle(arr){
+  const a = [...arr];
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function formatTime(s){
+  const m = Math.floor(s / 60).toString().padStart(2,'0');
+  const sec = (s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function startTimer(el){
+  let sec = 0;
+  el.textContent = '00:00';
+  return setInterval(() => {
+    sec++;
+    el.textContent = formatTime(sec);
+  }, 1000);
+}
+
+function calcAccuracy(correct,total){
+  return total ? Math.round((correct / total) * 100) : 0;
+}
+
+function makeKeypad(targetResolver, mode='basic'){
+  const shell = document.createElement('div');
+  shell.className = 'keypad-shell';
+
+  const left = document.createElement('div');
+  left.className = 'keypad-core';
+
+  const right = document.createElement('div');
+  right.className = 'keypad-ext';
+
+  const core = ['1','2','3','4','5','6','7','8','9','0','.','⌫'];
+
+  core.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'kbtn';
+    b.type = 'button';
+    b.textContent = v;
+    b.onclick = () => press(v);
+    left.appendChild(b);
+  });
+
+  let extras = [];
+  if(mode === 'basic') extras = ['-','(',')','clear'];
+  if(mode === 'function') extras = ['x','+','-','×','÷','^','(',')','clear'];
+  if(mode === 'compare') extras = ['<','>','=','clear'];
+
+  extras.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'kbtn dark';
+    b.type = 'button';
+    b.textContent = v;
+    b.onclick = () => press(v);
+    right.appendChild(b);
+  });
+
+  shell.append(left, right);
+
+  function press(v){
+    const el = targetResolver();
+    if(!el) return;
+
+    if(v === '⌫'){
+      el.value = el.value.slice(0,-1);
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    if(v === 'clear'){
+      el.value = '';
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    if(v === '×') v = '*';
+    if(v === '÷') v = '/';
+
+    el.value += v;
+    el.dispatchEvent(new Event('input'));
+  }
+
+  return shell;
+}
+
+function buildHeader(title, sub){
+  return `
+    <div class="panel header">
+      <div class="brand">
+        <div class="brand-badge">∑</div>
+        <div>
+          <h1>${title}</h1>
+          <div class="sub">${sub}</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <div class="pill">Student: <span id="studentNameOut">Guest</span></div>
+        <div class="pill">Progress: <span id="progressOut">0/0</span></div>
+        <div class="pill">Accuracy: <span id="accuracyOut">0%</span></div>
+        <div class="pill">Timer: <span id="timerOut">00:00</span></div>
+        <div class="pill">Started: <span id="startedOut">—</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function todayStamp(){
+  return new Date().toLocaleString();
+}
+
+function normalize(s){
+  return String(s).replace(/\s+/g,'').toLowerCase();
+}
+
+function tableHtml(headers, rows){
+  return `
+    <div class="table-box">
+      <table style="width:100%;border-collapse:collapse;background:#fff;color:#111;border-radius:12px;overflow:hidden">
+        <thead>
+          <tr>
+            ${headers.map(h => `<th style="border:1px solid #d7e0f0;padding:10px;background:#eef3fb">${h}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              ${r.map(c => `<td style="border:1px solid #d7e0f0;padding:10px;text-align:center">${c}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+const questionBank = [
+  {type:'mc', prompt:'If f(x) = 2x + 3, what is f(4)?', choices:['11','10','8','5'], answer:0, hint:'Substitute 4 for x.', explanation:'f(4) = 2(4) + 3 = 11.'},
+
+  {type:'entry', prompt:'If g(x) = x² - 1, enter the value of g(5).', answer:'24', hint:'Square 5 first, then subtract 1.', explanation:'g(5) = 25 - 1 = 24.', keypad:'basic'},
+
+  {type:'mc', prompt:'In the expression h(7), what does the 7 represent?', choices:['The input value','The output value','The slope','The y-intercept'], answer:0, hint:'It is the value being plugged into the function.', explanation:'The number inside the parentheses is the input.'},
+
+  {type:'multi', prompt:'Select all true statements about functions.', choices:['Each input has exactly one output','A function can be represented by a table','Two different inputs can share the same output','A function rule can be written as f(x)','A function must always be linear'], answer:[0,1,2,3], hint:'Think about what makes a relation a function.', explanation:'A function gives one output for each input, and it can be shown in different forms. It does not have to be linear.'},
+
+  {type:'mc', prompt:'If p(x) = 3x - 4, what is p(2)?', choices:['2','6','10','-2'], answer:0, hint:'Substitute 2 for x.', explanation:'p(2) = 3(2) - 4 = 2.'},
+
+  {type:'entry', prompt:'If r(x) = 4 - x, enter r(-3).', answer:'7', hint:'Be careful subtracting a negative.', explanation:'r(-3) = 4 - (-3) = 7.', keypad:'basic'},
+
+  {type:'mc', prompt:'A function table shows x = 1 gives y = 6. Which statement is correct?', choices:['f(1) = 6','f(6) = 1','1 = f(6)','6 is always the input'], answer:0, hint:'Input goes inside the parentheses.', explanation:'If input 1 gives output 6, then f(1) = 6.'},
+
+  {type:'tableEntry', prompt:'Use the table to find the output when x = 3.', headers:['x','f(x)'], rows:[[0,2],[1,5],[2,8],[3,11]], answer:'11', hint:'Read the row where x = 3.', explanation:'The table shows that when x = 3, f(x) = 11.'},
+
+  {type:'mc', prompt:'If f(x) = x + 9, which expression finds the output when the input is 12?', choices:['f(12)','12(f)','x + 12','9(12)'], answer:0, hint:'Function notation places the input in parentheses.', explanation:'f(12) means evaluate the function at input 12.'},
+
+  {type:'entry', prompt:'If t(x) = 2x², enter t(3).', answer:'18', hint:'Square 3, then multiply by 2.', explanation:'t(3) = 2(9) = 18.', keypad:'basic'},
+
+  {type:'dropdown', prompt:'Complete the statement. In function notation, f(5) means the [ input / output ] is 5, and f(5) represents the [ output / equation ].', dropdowns:[['input','output'],['output','equation']], answer:['input','output'], hint:'The number inside the parentheses is what goes in.', explanation:'5 is the input, and f(5) is the resulting output.'},
+
+  {type:'mc', prompt:'If a table shows x-values 2, 4, 6 and outputs 5, 7, 9, what is the output when the input is 4?', choices:['7','4','6','9'], answer:0, hint:'Match the input to its row.', explanation:'The table shows input 4 gives output 7.'},
+
+  {type:'entry', prompt:'If m(x) = 5x + 1, enter m(0).', answer:'1', hint:'Substitute 0 for x.', explanation:'m(0) = 5(0) + 1 = 1.', keypad:'basic'},
+
+  {type:'mc', prompt:'Which of the following represents evaluating a function?', choices:['Substituting an input value into the rule','Finding the slope only','Graphing every ordered pair possible','Changing the variable name'], answer:0, hint:'Evaluation means finding an output from a known input.', explanation:'Evaluating a function means plugging in an input to determine the output.'},
+
+  {type:'tableEntry', prompt:'Use the table to find q(6).', headers:['x','q(x)'], rows:[[2,1],[4,3],[6,5],[8,7]], answer:'5', hint:'Locate the row with x = 6.', explanation:'The table shows q(6) = 5.'},
+
+  {type:'mc', prompt:'If s(x) = x² + 2x, what is s(2)?', choices:['8','6','4','10'], answer:0, hint:'Square 2 and also compute 2x.', explanation:'s(2) = 2² + 2(2) = 4 + 4 = 8.'},
+
+  {type:'entry', prompt:'If w(x) = 10 - 2x, enter w(4).', answer:'2', hint:'Multiply 2 by 4, then subtract from 10.', explanation:'w(4) = 10 - 8 = 2.', keypad:'basic'},
+
+  {type:'mc', prompt:'Which value is the input in k(9) = 14?', choices:['9','14','k','=' ], answer:0, hint:'The input is the number inside the parentheses.', explanation:'In k(9), the input is 9.'},
+
+  {type:'multi', prompt:'Select all expressions that correctly use function notation.', choices:['f(3)','g(x)','h = 7','p(2) = 5','x(f)'], answer:[0,1,3], hint:'Proper notation places the input inside parentheses after the function name.', explanation:'f(3), g(x), and p(2) = 5 are all correct uses of function notation.'},
+
+  {type:'entry', prompt:'If y = 3x + 4 defines a function, enter the output when x = 6.', answer:'22', hint:'Substitute 6 for x.', explanation:'y = 3(6) + 4 = 22.', keypad:'basic'},
+
+  {type:'tableCompare', prompt:'Use the table to compare outputs. Enter >, <, or = to compare f(1) ___ f(3).', headers:['x','f(x)'], rows:[[0,4],[1,7],[2,10],[3,13]], answer:'<', hint:'Read both outputs, then compare 7 and 13.', explanation:'f(1) = 7 and f(3) = 13, so 7 < 13.', keypad:'compare'},
+
+  {type:'mc', prompt:'If a function rule is a(x) = x - 8, what is a(12)?', choices:['4','20','-4','8'], answer:0, hint:'Subtract 8 from 12.', explanation:'a(12) = 12 - 8 = 4.'},
+
+  {type:'entry', prompt:'If b(x) = 2x + 10, enter b(-2).', answer:'6', hint:'Multiply first, then add.', explanation:'b(-2) = 2(-2) + 10 = 6.', keypad:'basic'},
+
+  {type:'mc', prompt:'A function table shows input 5 has output -1. Which statement is true?', choices:['f(5) = -1','f(-1) = 5','5 = f(-1)','The output is always positive'], answer:0, hint:'The input is 5, so 5 goes inside the parentheses.', explanation:'If 5 maps to -1, then f(5) = -1.'},
+
+  {type:'dropdown', prompt:'Complete the statement. To evaluate f(x), you replace x with the [ input value / output value ] and then [ simplify / graph first ].', dropdowns:[['input value','output value'],['simplify','graph first']], answer:['input value','simplify'], hint:'Evaluation is substitution followed by computation.', explanation:'You substitute the input value for x and then simplify.'},
+
+  {type:'tableEntry', prompt:'Use the table to find h(2).', headers:['x','h(x)'], rows:[[-1,9],[0,6],[1,3],[2,0]], answer:'0', hint:'Find the row where x = 2.', explanation:'The table shows h(2) = 0.'},
+
+  {type:'mc', prompt:'If c(x) = 4x - 5, what is c(3)?', choices:['7','12','1','-7'], answer:0, hint:'Multiply first, then subtract 5.', explanation:'c(3) = 4(3) - 5 = 12 - 5 = 7.'},
+
+  {type:'entry', prompt:'If d(x) = x² + 3, enter d(4).', answer:'19', hint:'Square 4, then add 3.', explanation:'d(4) = 16 + 3 = 19.', keypad:'basic'},
+
+  {type:'mc', prompt:'Which table could represent a function?', choices:['x:1,2,3 and y:4,4,4','x:1,1,2 and y:3,5,7','x:2,2,2 and y:1,2,3','x:4,4,5 and y:6,7,8'], answer:0, hint:'A function cannot assign two different outputs to the same input.', explanation:'The first table is a function because each input has exactly one output.'},
+
+  {type:'entry', prompt:'If e(x) = 7 - x², enter e(2).', answer:'3', hint:'Square 2 before subtracting.', explanation:'e(2) = 7 - 4 = 3.', keypad:'basic'}
+];
+
+const questions = shuffle(questionBank).slice(0, Math.min(30, questionBank.length));
+let index = 0;
+let correct = 0;
+let attempts = 0;
+let activeInput = null;
+let timerId = null;
+let gameStarted = false;
+
+const app = document.getElementById('app');
+
+app.innerHTML = `
+  ${buildHeader('Function Evaluation Challenge','OST-style function notation, table reading, evaluation, comparison, and keypad entry')}
+  <div class="grid grid-2">
+    <div class="panel side">
+      <h3>Start</h3>
+      <p class="muted">This build focuses on function notation, evaluating from rules, reading tables, comparing outputs, and identifying correct input-output relationships.</p>
+      <div class="tools">
+        <label class="small">Student name<br><input id="studentName" class="answer-box" style="min-height:44px" placeholder="Enter student name" /></label>
+        <button class="btn" id="beginBtn">Begin Function Evaluation Challenge</button>
+        <a class="btn secondary center" href="../index.html">Back to Hub</a>
+      </div>
+      <div style="margin-top:18px">
+        <div class="small muted">Progress</div>
+        <div class="progress"><span id="progressBar"></span></div>
+      </div>
+      <div class="footer-controls">
+        <button class="btn secondary" id="restartBtn" disabled>Restart</button>
+      </div>
+      <div class="notice" style="margin-top:16px">Students must revise after a miss. Correct answers auto-advance after the explanation lingers briefly.</div>
+    </div>
+    <div class="panel question" id="stage">
+      <div class="center muted" style="padding:28px 12px">Press <strong>Begin</strong> to start.</div>
+    </div>
+  </div>
+`;
+
+document.getElementById('beginBtn').onclick = startGame;
+document.getElementById('restartBtn').onclick = () => location.reload();
+
+function startGame(){
+  if(gameStarted) return;
+  gameStarted = true;
+
+  document.getElementById('studentNameOut').textContent =
+    document.getElementById('studentName').value.trim() || 'Guest';
+  document.getElementById('startedOut').textContent = todayStamp();
+  document.getElementById('restartBtn').disabled = false;
+
+  if(timerId) clearInterval(timerId);
+  timerId = startTimer(document.getElementById('timerOut'));
+
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = questions[index];
+
+  if(!q){
+    clearInterval(timerId);
+    const stage = document.getElementById('stage');
+    stage.innerHTML = `
+      <div class="center" style="padding:30px 12px">
+        <div class="qnum" style="margin:0 auto 12px;background:var(--good)">✓</div>
+        <h2>Round Complete</h2>
+        <p class="muted">Final accuracy: <strong>${calcAccuracy(correct,attempts)}%</strong> • Correct: <strong>${correct}</strong> / ${questions.length}</p>
+        <div class="footer-controls" style="justify-content:center">
+          <button class="btn" onclick="location.reload()">Play Again</button>
+          <a class="btn secondary" href="../index.html">Back to Hub</a>
+        </div>
+      </div>
+    `;
+    document.getElementById('progressOut').textContent = `${questions.length}/${questions.length}`;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    document.getElementById('progressBar').style.width = '100%';
+    return;
+  }
+
+  document.getElementById('progressOut').textContent = `${index + 1}/${questions.length}`;
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+  document.getElementById('progressBar').style.width = `${(index / questions.length) * 100}%`;
+
+  const stage = document.getElementById('stage');
+  let body = '';
+
+  if(q.type === 'mc' || q.type === 'multi'){
+    const labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const items = q.choices.map((c,i) => ({ text:c, idx:i }));
+    q.renderChoices = shuffle(items);
+
+    body = `
+      <div class="choices">
+        ${q.renderChoices.map((c,i) => `
+          <label class="choice">
+            <input type="${q.type === 'mc' ? 'radio' : 'checkbox'}" name="choice" value="${c.idx}">
+            <span class="choice-label">${labels[i]}</span>
+            <span>${c.text}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'entry'){
+    body = `
+      <div class="answer-row">
+        <span class="small muted">Answer:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'dropdown'){
+    const parts = q.prompt.split(/\[.*?\]/g);
+    body = `
+      <div class="prompt">
+        ${parts[0]}
+        <select class="answer-box dd" style="width:auto;min-height:44px">
+          ${q.dropdowns[0].map(v => `<option>${v}</option>`).join('')}
+        </select>
+        ${parts[1]}
+        <select class="answer-box dd" style="width:auto;min-height:44px">
+          ${q.dropdowns[1].map(v => `<option>${v}</option>`).join('')}
+        </select>
+        ${parts[2] || ''}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'tableEntry'){
+    body = `
+      ${tableHtml(q.headers, q.rows)}
+      <div class="answer-row" style="margin-top:14px">
+        <span class="small muted">Answer:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'tableCompare'){
+    body = `
+      ${tableHtml(q.headers, q.rows)}
+      <div class="answer-row" style="margin-top:14px">
+        <span class="small muted">Comparison symbol:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off" placeholder="Enter >, <, or =">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  stage.innerHTML = `
+    <div class="q-meta">
+      <div class="flex">
+        <div class="qnum">${index + 1}</div>
+        <div>
+          <div class="small muted">Function Evaluation Challenge</div>
+          <div class="small">Question ${index + 1} of ${questions.length}</div>
+        </div>
+      </div>
+      <a class="btn secondary" href="../index.html">Exit</a>
+    </div>
+
+    <div class="prompt">${q.prompt}</div>
+    ${body}
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  if(q.type === 'entry'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, q.keypad || 'basic'));
+    input.focus();
+  }
+
+  if(q.type === 'tableEntry'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, 'basic'));
+    input.focus();
+  }
+
+  if(q.type === 'tableCompare'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, q.keypad || 'compare'));
+    input.focus();
+  }
+
+  document.getElementById('submitBtn').onclick = checkAnswer;
+}
+
+function showFeedback(type, text){
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback show ${type}`;
+  fb.innerHTML = text;
+}
+
+function lockQuestionInputs(){
+  document.querySelectorAll('input, select, button.kbtn').forEach(el => {
+    el.disabled = true;
+  });
+  const submitBtn = document.getElementById('submitBtn');
+  if(submitBtn) submitBtn.disabled = true;
+}
+
+function markChoicesMC(answerIdx){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(Number(input.value) === answerIdx){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function markChoicesMulti(answerSet){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(answerSet.includes(Number(input.value))){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function checkAnswer(){
+  const q = questions[index];
+  attempts++;
+  let ok = false;
+
+  if(q.type === 'mc'){
+    const picked = document.querySelector('input[name="choice"]:checked');
+    if(!picked) return showFeedback('bad','Select one answer first.');
+    ok = Number(picked.value) === q.answer;
+    markChoicesMC(q.answer);
+  }
+
+  if(q.type === 'multi'){
+    const picks = [...document.querySelectorAll('input[name="choice"]:checked')]
+      .map(x => Number(x.value))
+      .sort((a,b) => a - b);
+
+    if(!picks.length) return showFeedback('bad','Choose all answers you believe are correct.');
+
+    ok = JSON.stringify(picks) === JSON.stringify([...q.answer].sort((a,b) => a - b));
+    markChoicesMulti(q.answer);
+  }
+
+  if(q.type === 'entry' || q.type === 'tableEntry' || q.type === 'tableCompare'){
+    ok = normalize(document.getElementById('entryInput').value) === normalize(q.answer);
+  }
+
+  if(q.type === 'dropdown'){
+    const vals = [...document.querySelectorAll('.dd')].map(s => s.value);
+    ok = vals.every((v,i) => v === q.answer[i]);
+  }
+
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+
+  if(ok){
+    correct++;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    showFeedback('good', `<strong>Correct.</strong> ${q.explanation}`);
+    lockQuestionInputs();
+    setTimeout(() => {
+      index++;
+      renderQuestion();
+    }, 1900);
+  } else {
+    showFeedback('bad', `<strong>Not yet.</strong> Hint: ${q.hint}<br><span class="muted">Revise your answer and try again.</span>`);
+  }
+}
+</script>
+</body>
+</html>
