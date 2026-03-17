@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Systems Solver Arena — Algebra I OST Mastery Hub</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+
+<script>
+function shuffle(arr){
+  const a = [...arr];
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function formatTime(s){
+  const m = Math.floor(s / 60).toString().padStart(2,'0');
+  const sec = (s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function startTimer(el){
+  let sec = 0;
+  el.textContent = '00:00';
+  return setInterval(() => {
+    sec++;
+    el.textContent = formatTime(sec);
+  }, 1000);
+}
+
+function calcAccuracy(correct,total){
+  return total ? Math.round((correct / total) * 100) : 0;
+}
+
+function makeKeypad(targetResolver, mode='basic'){
+  const shell = document.createElement('div');
+  shell.className = 'keypad-shell';
+
+  const left = document.createElement('div');
+  left.className = 'keypad-core';
+
+  const right = document.createElement('div');
+  right.className = 'keypad-ext';
+
+  const core = ['1','2','3','4','5','6','7','8','9','0','.','⌫'];
+
+  core.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'kbtn';
+    b.type = 'button';
+    b.textContent = v;
+    b.onclick = () => press(v);
+    left.appendChild(b);
+  });
+
+  let extras = [];
+  if(mode === 'basic') extras = ['-','(',')','clear'];
+  if(mode === 'algebra') extras = ['x','y','+','-','×','÷','=','(',')','clear'];
+  if(mode === 'orderedPair') extras = ['(',')',',','-','clear'];
+
+  extras.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'kbtn dark';
+    b.type = 'button';
+    b.textContent = v;
+    b.onclick = () => press(v);
+    right.appendChild(b);
+  });
+
+  shell.append(left, right);
+
+  function press(v){
+    const el = targetResolver();
+    if(!el) return;
+
+    if(v === '⌫'){
+      el.value = el.value.slice(0,-1);
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    if(v === 'clear'){
+      el.value = '';
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    if(v === '×') v = '*';
+    if(v === '÷') v = '/';
+
+    el.value += v;
+    el.dispatchEvent(new Event('input'));
+  }
+
+  return shell;
+}
+
+function buildHeader(title, sub){
+  return `
+    <div class="panel header">
+      <div class="brand">
+        <div class="brand-badge">∑</div>
+        <div>
+          <h1>${title}</h1>
+          <div class="sub">${sub}</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <div class="pill">Student: <span id="studentNameOut">Guest</span></div>
+        <div class="pill">Progress: <span id="progressOut">0/0</span></div>
+        <div class="pill">Accuracy: <span id="accuracyOut">0%</span></div>
+        <div class="pill">Timer: <span id="timerOut">00:00</span></div>
+        <div class="pill">Started: <span id="startedOut">—</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function todayStamp(){
+  return new Date().toLocaleString();
+}
+
+function normalize(s){
+  return String(s).replace(/\s+/g,'').toLowerCase();
+}
+
+function orderedPairMatch(value, xAns, yAns){
+  const n = normalize(value);
+  const targetA = `(${normalize(xAns)},${normalize(yAns)})`;
+  const targetB = `${normalize(xAns)},${normalize(yAns)}`;
+  return n === targetA || n === targetB;
+}
+
+function systemMatches(values, answer){
+  return String(values.x).trim() === String(answer.x).trim() &&
+         String(values.y).trim() === String(answer.y).trim();
+}
+
+const questionBank = [
+  {type:'mc', prompt:'What does the solution to a system of two linear equations represent?', choices:['The ordered pair that makes both equations true','The slope of the first equation only','The y-intercept of both lines','The point where one line crosses the y-axis'], answer:0, hint:'Think about what must work in both equations.', explanation:'A solution to a system is an ordered pair that satisfies both equations.'},
+
+  {type:'orderedPair', prompt:'Solve the system: y = x + 2 and y = 5. Enter the solution as an ordered pair.', answer:{x:'3',y:'5'}, hint:'If y = 5, then substitute 5 into y = x + 2.', explanation:'If 5 = x + 2, then x = 3. The solution is (3, 5).', keypad:'orderedPair'},
+
+  {type:'mc', prompt:'If two lines intersect once, the system has', choices:['one solution','no solution','infinitely many solutions','two solutions'], answer:0, hint:'One intersection point means one shared ordered pair.', explanation:'A system with two lines intersecting once has exactly one solution.'},
+
+  {type:'multiField', prompt:'Solve the system. Enter x and y.  y = x + 1   and   y = 7', fields:['x','y'], answer:{x:'6',y:'7'}, hint:'Use y = 7 in the first equation.', explanation:'7 = x + 1, so x = 6 and y = 7.', keypad:'algebra'},
+
+  {type:'mc', prompt:'Which system could be solved most efficiently by substitution?', choices:['y = 2x + 3 and x + y = 9','2x + 3y = 12 and 4x - y = 8','3x + 2y = 10 and 5x - 2y = 6','4x + 5y = 1 and 7x - 2y = 9'], answer:0, hint:'Look for an equation already solved for one variable.', explanation:'Substitution is easiest when one equation is already isolated for x or y.'},
+
+  {type:'mc', prompt:'If two lines are parallel and distinct, the system has', choices:['no solution','one solution','infinitely many solutions','two x-intercepts'], answer:0, hint:'Parallel distinct lines never meet.', explanation:'Distinct parallel lines do not intersect, so there is no solution.'},
+
+  {type:'multi', prompt:'Select all statements that are true about a system with infinitely many solutions.', choices:['The two equations represent the same line','Every point on one line is also on the other','The lines intersect once','The equations are equivalent','There is no shared solution'], answer:[0,1,3], hint:'Infinitely many solutions means both equations describe the same graph.', explanation:'Equivalent equations graph as the same line, so every point on the line is a shared solution.'},
+
+  {type:'mc', prompt:'Which ordered pair is the solution to the system x + y = 8 and x - y = 2?', choices:['(5, 3)','(3, 5)','(4, 4)','(6, 2)'], answer:0, hint:'Add the equations to eliminate y.', explanation:'Adding gives 2x = 10, so x = 5 and y = 3.'},
+
+  {type:'multiField', prompt:'Solve the system. Enter x and y.  x + y = 10   and   y = 2x - 2', fields:['x','y'], answer:{x:'4',y:'6'}, hint:'Substitute 2x - 2 in for y.', explanation:'x + (2x - 2) = 10 gives 3x = 12, so x = 4 and y = 6.', keypad:'algebra'},
+
+  {type:'mc', prompt:'Which describes elimination?', choices:['Combining equations to remove one variable','Guessing the intercepts from a graph','Finding only the slope of each line','Replacing both variables with zero'], answer:0, hint:'The goal is to make one variable cancel out.', explanation:'Elimination uses addition or subtraction of equations to eliminate one variable.'},
+
+  {type:'dropdown', prompt:'Complete the sentence. If adding two equations removes y, then y has been [ eliminated / substituted ] and the next step is to solve for [ the remaining variable / both variables at once ].', dropdowns:[['eliminated','substituted'],['the remaining variable','both variables at once']], answer:['eliminated','the remaining variable'], hint:'Think about what happens after one variable disappears.', explanation:'Once a variable is eliminated, solve for the remaining variable first.'},
+
+  {type:'orderedPair', prompt:'Solve the system: x = 4 and y = 2x - 1. Enter the solution as an ordered pair.', answer:{x:'4',y:'7'}, hint:'Substitute x = 4 into y = 2x - 1.', explanation:'y = 2(4) - 1 = 7, so the solution is (4, 7).', keypad:'orderedPair'},
+
+  {type:'mc', prompt:'A system is shown below.  2x + y = 11 and y = -x + 8. What is the value of x in the solution?', choices:['3','2','5','8'], answer:0, hint:'Substitute -x + 8 for y.', explanation:'2x + (-x + 8) = 11 gives x + 8 = 11, so x = 3.'},
+
+  {type:'mc', prompt:'What is the solution to x = 2 and x = 2 with different forms of y written from the same line?', choices:['infinitely many solutions if both equations describe the same line','no solution always','one solution only if y = 0','cannot be determined'], answer:0, hint:'Same line means all shared points remain shared.', explanation:'If the equations are equivalent and describe the same line, the system has infinitely many solutions.'},
+
+  {type:'multiField', prompt:'Solve the system. Enter x and y.  2x + y = 9   and   x - y = 0', fields:['x','y'], answer:{x:'3',y:'3'}, hint:'From x - y = 0, notice x = y.', explanation:'If x = y, then 2x + x = 9, so 3x = 9 and x = 3. Then y = 3.', keypad:'algebra'},
+
+  {type:'mc', prompt:'Which system has no solution?', choices:['y = 3x + 1 and y = 3x - 4','y = x + 2 and y = -x + 6','x + y = 7 and x - y = 1','y = 2x and y = 2x'], answer:0, hint:'Look for same slope, different intercepts.', explanation:'Same slope with different y-intercepts means parallel lines and no solution.'},
+
+  {type:'mc', prompt:'Which system has infinitely many solutions?', choices:['y = 2x + 5 and 2y = 4x + 10','y = x + 4 and y = x - 4','x + y = 6 and x - y = 6','y = -x + 3 and y = x + 3'], answer:0, hint:'Check whether one equation is just a multiple of the other.', explanation:'2y = 4x + 10 simplifies to y = 2x + 5, the same line.'},
+
+  {type:'orderedPair', prompt:'Solve the system: y = 2x + 1 and y = x + 4. Enter the solution as an ordered pair.', answer:{x:'3',y:'7'}, hint:'Set the right sides equal.', explanation:'2x + 1 = x + 4 gives x = 3. Then y = 7.', keypad:'orderedPair'},
+
+  {type:'mc', prompt:'A school sells student tickets for $4 and adult tickets for $7. One event sold 20 total tickets and collected $95. Which system models the situation if x is student tickets and y is adult tickets?', choices:['x + y = 20 and 4x + 7y = 95','x + y = 95 and 4x + 7y = 20','4x + y = 20 and 7x + y = 95','x - y = 20 and 4x + 7y = 95'], answer:0, hint:'One equation counts tickets. The other counts money.', explanation:'Total tickets gives x + y = 20 and total value gives 4x + 7y = 95.'},
+
+  {type:'multiField', prompt:'For the ticket system x + y = 20 and 4x + 7y = 95, enter x and y.', fields:['x','y'], answer:{x:'15',y:'5'}, hint:'Use substitution or elimination from x + y = 20.', explanation:'If x = 20 - y, then 4(20 - y) + 7y = 95, so 80 + 3y = 95. Thus y = 5 and x = 15.', keypad:'algebra'},
+
+  {type:'mc', prompt:'Which statement about the solution of a graphed system is true?', choices:['It is the point where the graphs intersect','It is always the y-intercept','It is always the x-intercept','It is the slope of the steeper line'], answer:0, hint:'The solution is the shared point.', explanation:'Graphically, the solution is the intersection point.'},
+
+  {type:'multi', prompt:'Select all systems that have one solution.', choices:['y = x + 2 and y = -x + 6','y = 3x + 1 and y = 3x - 5','y = 2x - 4 and 2y = 4x - 8','x + y = 9 and x - y = 1','y = -2x + 7 and y = -2x + 7'], answer:[0,3], hint:'One solution means different slopes.', explanation:'Systems with different slopes intersect once, giving one solution.'},
+
+  {type:'mc', prompt:'When solving by substitution, after finding one variable, what should you do next?', choices:['Substitute back to find the other variable','Stop because the system is solved','Graph both lines to check only','Multiply both equations by 0'], answer:0, hint:'A system solution needs both x and y.', explanation:'After finding one variable, substitute back to find the second coordinate.'},
+
+  {type:'orderedPair', prompt:'Solve the system: x + y = 9 and y = 4. Enter the solution as an ordered pair.', answer:{x:'5',y:'4'}, hint:'Replace y with 4 in the first equation.', explanation:'x + 4 = 9, so x = 5. The solution is (5, 4).', keypad:'orderedPair'},
+
+  {type:'mc', prompt:'A store sells pencils for $1 and notebooks for $3. A customer buys 8 items for $18. If x is pencils and y is notebooks, what is y?', choices:['5','3','6','2'], answer:0, hint:'Use x + y = 8 and x + 3y = 18.', explanation:'Subtracting gives 2y = 10, so y = 5.'},
+
+  {type:'multiField', prompt:'Solve the system. Enter x and y.  3x + y = 13   and   y = x + 1', fields:['x','y'], answer:{x:'3',y:'4'}, hint:'Substitute x + 1 in for y.', explanation:'3x + (x + 1) = 13 gives 4x = 12, so x = 3 and y = 4.', keypad:'algebra'},
+
+  {type:'dropdown', prompt:'Complete the statement. A system with the same slope and different y-intercepts has [ no solution / one solution ] because the lines are [ parallel / the same line ].', dropdowns:[['no solution','one solution'],['parallel','the same line']], answer:['no solution','parallel'], hint:'Same steepness, different starting point.', explanation:'Distinct parallel lines never intersect, so the system has no solution.'},
+
+  {type:'mc', prompt:'Which ordered pair satisfies both equations?  y = x + 3 and 2x + y = 9', choices:['(2, 5)','(3, 6)','(1, 4)','(4, 7)'], answer:0, hint:'Check each choice in both equations.', explanation:'At (2, 5), y = x + 3 and 2x + y = 9 are both true.'},
+
+  {type:'mc', prompt:'If elimination gives a false statement such as 0 = 5, the system has', choices:['no solution','one solution','infinitely many solutions','exactly two solutions'], answer:0, hint:'A contradiction means the lines never share a point.', explanation:'A false equation indicates inconsistent equations, so there is no solution.'},
+
+  {type:'mc', prompt:'If elimination gives a true statement such as 0 = 0, the system most likely has', choices:['infinitely many solutions','no solution','one solution','an undefined slope only'], answer:0, hint:'This usually means the equations are equivalent.', explanation:'A true identity suggests the equations describe the same line.'}
+];
+
+const questions = shuffle(questionBank).slice(0, Math.min(30, questionBank.length));
+let index = 0;
+let correct = 0;
+let attempts = 0;
+let activeInput = null;
+let timerId = null;
+let gameStarted = false;
+
+const app = document.getElementById('app');
+
+app.innerHTML = `
+  ${buildHeader('Systems Solver Arena','OST-style systems practice with substitution, elimination, modeling, multi-select, and keypad entry')}
+  <div class="grid grid-2">
+    <div class="panel side">
+      <h3>Start</h3>
+      <p class="muted">This build focuses on solving systems, recognizing one/no/infinite solutions, substitution, elimination, and modeling real-world situations.</p>
+      <div class="tools">
+        <label class="small">Student name<br><input id="studentName" class="answer-box" style="min-height:44px" placeholder="Enter student name" /></label>
+        <button class="btn" id="beginBtn">Begin Systems Solver Arena</button>
+        <a class="btn secondary center" href="../index.html">Back to Hub</a>
+      </div>
+      <div style="margin-top:18px">
+        <div class="small muted">Progress</div>
+        <div class="progress"><span id="progressBar"></span></div>
+      </div>
+      <div class="footer-controls">
+        <button class="btn secondary" id="restartBtn" disabled>Restart</button>
+      </div>
+      <div class="notice" style="margin-top:16px">Hints guide the student without giving away the full answer. Correct answers auto-advance after the explanation lingers briefly.</div>
+    </div>
+    <div class="panel question" id="stage">
+      <div class="center muted" style="padding:28px 12px">Press <strong>Begin</strong> to start.</div>
+    </div>
+  </div>
+`;
+
+document.getElementById('beginBtn').onclick = startGame;
+document.getElementById('restartBtn').onclick = () => location.reload();
+
+function startGame(){
+  if(gameStarted) return;
+  gameStarted = true;
+
+  document.getElementById('studentNameOut').textContent =
+    document.getElementById('studentName').value.trim() || 'Guest';
+  document.getElementById('startedOut').textContent = todayStamp();
+  document.getElementById('restartBtn').disabled = false;
+
+  if(timerId) clearInterval(timerId);
+  timerId = startTimer(document.getElementById('timerOut'));
+
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = questions[index];
+
+  if(!q){
+    clearInterval(timerId);
+    const stage = document.getElementById('stage');
+    stage.innerHTML = `
+      <div class="center" style="padding:30px 12px">
+        <div class="qnum" style="margin:0 auto 12px;background:var(--good)">✓</div>
+        <h2>Round Complete</h2>
+        <p class="muted">Final accuracy: <strong>${calcAccuracy(correct,attempts)}%</strong> • Correct: <strong>${correct}</strong> / ${questions.length}</p>
+        <div class="footer-controls" style="justify-content:center">
+          <button class="btn" onclick="location.reload()">Play Again</button>
+          <a class="btn secondary" href="../index.html">Back to Hub</a>
+        </div>
+      </div>
+    `;
+    document.getElementById('progressOut').textContent = `${questions.length}/${questions.length}`;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    document.getElementById('progressBar').style.width = '100%';
+    return;
+  }
+
+  document.getElementById('progressOut').textContent = `${index + 1}/${questions.length}`;
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+  document.getElementById('progressBar').style.width = `${(index / questions.length) * 100}%`;
+
+  const stage = document.getElementById('stage');
+  let body = '';
+
+  if(q.type === 'mc' || q.type === 'multi'){
+    const labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const items = q.choices.map((c,i) => ({ text:c, idx:i }));
+    q.renderChoices = shuffle(items);
+
+    body = `
+      <div class="choices">
+        ${q.renderChoices.map((c,i) => `
+          <label class="choice">
+            <input type="${q.type === 'mc' ? 'radio' : 'checkbox'}" name="choice" value="${c.idx}">
+            <span class="choice-label">${labels[i]}</span>
+            <span>${c.text}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'multiField'){
+    body = `
+      <div class="multi-fields">
+        ${q.fields.map(f => `
+          <label class="field-line">
+            <span class="code">${f} =</span>
+            <input class="answer-small mf" data-key="${f}" autocomplete="off">
+          </label>
+        `).join('')}
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'orderedPair'){
+    body = `
+      <div class="answer-row">
+        <span class="small muted">Ordered pair:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off" placeholder="Example: (3,5)">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'dropdown'){
+    const parts = q.prompt.split(/\[.*?\]/g);
+    body = `
+      <div class="prompt">
+        ${parts[0]}
+        <select class="answer-box dd" style="width:auto;min-height:44px">
+          ${q.dropdowns[0].map(v => `<option>${v}</option>`).join('')}
+        </select>
+        ${parts[1]}
+        <select class="answer-box dd" style="width:auto;min-height:44px">
+          ${q.dropdowns[1].map(v => `<option>${v}</option>`).join('')}
+        </select>
+        ${parts[2] || ''}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  stage.innerHTML = `
+    <div class="q-meta">
+      <div class="flex">
+        <div class="qnum">${index + 1}</div>
+        <div>
+          <div class="small muted">Systems Solver Arena</div>
+          <div class="small">Question ${index + 1} of ${questions.length}</div>
+        </div>
+      </div>
+      <a class="btn secondary" href="../index.html">Exit</a>
+    </div>
+
+    <div class="prompt">${q.prompt}</div>
+    ${body}
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  if(q.type === 'multiField'){
+    const fields = [...document.querySelectorAll('.mf')];
+    activeInput = fields[0];
+    fields.forEach(f => f.addEventListener('focus', () => activeInput = f));
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, q.keypad || 'algebra'));
+    if(fields[0]) fields[0].focus();
+  }
+
+  if(q.type === 'orderedPair'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, q.keypad || 'orderedPair'));
+    input.focus();
+  }
+
+  document.getElementById('submitBtn').onclick = checkAnswer;
+}
+
+function showFeedback(type, text){
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback show ${type}`;
+  fb.innerHTML = text;
+}
+
+function lockQuestionInputs(){
+  document.querySelectorAll('input, select, button.kbtn').forEach(el => {
+    el.disabled = true;
+  });
+  const submitBtn = document.getElementById('submitBtn');
+  if(submitBtn) submitBtn.disabled = true;
+}
+
+function markChoicesMC(answerIdx){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(Number(input.value) === answerIdx){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function markChoicesMulti(answerSet){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(answerSet.includes(Number(input.value))){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function checkAnswer(){
+  const q = questions[index];
+  attempts++;
+  let ok = false;
+
+  if(q.type === 'mc'){
+    const picked = document.querySelector('input[name="choice"]:checked');
+    if(!picked) return showFeedback('bad','Select one answer first.');
+    ok = Number(picked.value) === q.answer;
+    markChoicesMC(q.answer);
+  }
+
+  if(q.type === 'multi'){
+    const picks = [...document.querySelectorAll('input[name="choice"]:checked')]
+      .map(x => Number(x.value))
+      .sort((a,b) => a - b);
+
+    if(!picks.length) return showFeedback('bad','Choose all answers you believe are correct.');
+
+    ok = JSON.stringify(picks) === JSON.stringify([...q.answer].sort((a,b) => a - b));
+    markChoicesMulti(q.answer);
+  }
+
+  if(q.type === 'multiField'){
+    const vals = Object.fromEntries(
+      [...document.querySelectorAll('.mf')].map(el => [el.dataset.key, normalize(el.value)])
+    );
+    ok = systemMatches(vals, q.answer);
+  }
+
+  if(q.type === 'orderedPair'){
+    const val = document.getElementById('entryInput').value;
+    ok = orderedPairMatch(val, q.answer.x, q.answer.y);
+  }
+
+  if(q.type === 'dropdown'){
+    const vals = [...document.querySelectorAll('.dd')].map(s => s.value);
+    ok = vals.every((v,i) => v === q.answer[i]);
+  }
+
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+
+  if(ok){
+    correct++;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    showFeedback('good', `<strong>Correct.</strong> ${q.explanation}`);
+    lockQuestionInputs();
+    setTimeout(() => {
+      index++;
+      renderQuestion();
+    }, 1900);
+  } else {
+    showFeedback('bad', `<strong>Not yet.</strong> Hint: ${q.hint}<br><span class="muted">Revise your answer and try again.</span>`);
+  }
+}
+</script>
+</body>
+</html>
