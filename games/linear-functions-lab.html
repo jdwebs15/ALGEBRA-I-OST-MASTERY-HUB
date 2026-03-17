@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Linear Functions Lab — Algebra I OST Mastery Hub</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <script defer src="../js/hub-shared.js"></script>
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+
+<script>
+const questionBank = [
+  {type:'mc', prompt:'Which quantity represents the slope of a linear function?', choices:['The change in y for each 1-unit change in x','The y-value when x = 0 only','The greatest y-value on the graph','The number of ordered pairs shown'], answer:0, hint:'Think rate of change.', explanation:'Slope describes how much the output changes for each unit increase in the input.'},
+  {type:'mc', prompt:'A line passes through (0, 5) and (3, 11). What is the slope?', choices:['2','3','5','6'], answer:0, hint:'Use rise over run: (11−5)/(3−0).', explanation:'The slope is 6/3 = 2.'},
+  {type:'entry', prompt:'For y = 4x - 7, what is the value of y when x = 3?', answer:'5', hint:'Substitute 3 for x.', explanation:'y = 4(3) - 7 = 12 - 7 = 5.', keypad:'basic'},
+  {type:'mc', prompt:'Which equation has a y-intercept of -4?', choices:['y = 3x - 4','y = -4x + 3','y = 4 - 3x','y = -4x'], answer:0, hint:'Look at the constant term in slope-intercept form.', explanation:'In y = mx + b, the y-intercept is b.'},
+  {type:'multi', prompt:'Select all equations that represent linear functions.', choices:['y = 2x + 1','y = x² + 3','y = -5x','y = 7/x','y = 0.5x - 9'], answer:[0,2,4], hint:'A linear function has x only to the first power and not in a denominator.', explanation:'The linear equations are y = 2x + 1, y = -5x, and y = 0.5x - 9.'},
+  {type:'entry', prompt:'A line has slope 3 and y-intercept 2. Enter the value of y when x = 4.', answer:'14', hint:'Write y = 3x + 2 first.', explanation:'y = 3(4) + 2 = 14.', keypad:'basic'},
+  {type:'mc', prompt:'Which statement is true for the graph of a line with negative slope?', choices:['It decreases from left to right','It increases from left to right','Its y-intercept must be positive','Its x-intercept does not exist'], answer:0, hint:'Visualize the line moving right.', explanation:'A negative slope line falls as x increases.'},
+  {type:'dropdown', prompt:'Complete the statement. A larger positive slope means the line is [ steeper / flatter ] and rises [ faster / slower ] from left to right.', dropdowns:[['steeper','flatter'],['faster','slower']], answer:['steeper','faster'], hint:'Positive slope goes up. A larger value rises more quickly.', explanation:'Greater positive slope means a steeper line and a faster rise.'},
+  {type:'mc', prompt:'Which table represents a linear function with constant rate of change 4?', choices:['x: 0,1,2 ; y: 2,6,10','x: 0,1,2 ; y: 1,2,4','x: 1,2,3 ; y: 3,6,12','x: -1,0,1 ; y: 5,5,5'], answer:0, hint:'Check if y changes by +4 each time x increases by 1.', explanation:'Only the first table has a constant difference of 4.'},
+  {type:'entry', prompt:'What is the slope of the line through (2, 1) and (6, 13)?', answer:'3', hint:'Use (13−1)/(6−2).', explanation:'The slope is 12/4 = 3.', keypad:'basic'},
+  {type:'mc', prompt:'A taxi charges a $6 starting fee and $2 per mile. Which equation models the cost y for x miles?', choices:['y = 2x + 6','y = 6x + 2','y = 2(x + 6)','y = 6 - 2x'], answer:0, hint:'Starting fee is the y-intercept.', explanation:'The rate is 2 and the fixed fee is 6, so y = 2x + 6.'},
+  {type:'entry', prompt:'Solve for y when x = -2 in y = -3x + 8.', answer:'14', hint:'Multiply carefully: -3(-2).', explanation:'y = 6 + 8 = 14.', keypad:'basic'},
+  {type:'mc', prompt:'If two lines have the same slope but different y-intercepts, they are', choices:['parallel','perpendicular','the same line','not linear'], answer:0, hint:'Same steepness, different starting heights.', explanation:'Equal slopes with different intercepts produce parallel lines.'},
+  {type:'multiField', prompt:'A line crosses the y-axis at 1 and goes up 2 for every 1 right. Enter m and b for y = mx + b.', fields:['m','b'], answer:{m:'2',b:'1'}, hint:'m is slope, b is y-intercept.', explanation:'The slope is 2 and the y-intercept is 1.', keypad:'algebra'},
+  {type:'mc', prompt:'Which ordered pair lies on y = 2x + 5?', choices:['(2, 9)','(2, 7)','(1, 8)','(3, 10)'], answer:0, hint:'Substitute x into the rule.', explanation:'For x = 2, y = 9.'},
+  {type:'entry', prompt:'Find the x-value where y = 11 for the line y = 2x + 1.', answer:'5', hint:'Set 11 = 2x + 1.', explanation:'10 = 2x, so x = 5.', keypad:'basic'},
+  {type:'mc', prompt:'A graph passes through (0, -3). What does this tell you?', choices:['The y-intercept is -3','The slope is -3','The x-intercept is -3','The function is not linear'], answer:0, hint:'x = 0 identifies the y-intercept.', explanation:'Any point with x = 0 gives the y-intercept.'},
+  {type:'dropdown', prompt:'Complete the sentence. In y = mx + b, m represents the [ slope / y-intercept ] and b represents the [ slope / y-intercept ].', dropdowns:[['slope','y-intercept'],['slope','y-intercept']], answer:['slope','y-intercept'], hint:'This is slope-intercept form.', explanation:'m is slope and b is the y-intercept.'},
+  {type:'entry', prompt:'A line has y-intercept -2 and passes through (4, 6). What is the slope?', answer:'2', hint:'Use the two points (0, -2) and (4, 6).', explanation:'Slope = (6 - (-2))/4 = 8/4 = 2.', keypad:'basic'},
+  {type:'mc', prompt:'Which situation is best modeled by a linear function?', choices:['A tank gains 8 gallons every minute','A rabbit population doubles each month','The area of a square as side length changes','A ball is thrown upward'], answer:0, hint:'Look for a constant additive change.', explanation:'Adding the same amount each minute is linear growth.'},
+  {type:'equation', prompt:'Write the equation of the line with slope 2 and y-intercept -1 in slope-intercept form.', answer:['y=2x-1','y = 2x - 1'], hint:'Use y = mx + b.', explanation:'With slope 2 and intercept -1, the equation is y = 2x - 1.', keypad:'equation'},
+  {type:'mc', prompt:'Which graph would represent y = -x + 4?', choices:['A line decreasing left to right and crossing the y-axis at 4','A line increasing left to right and crossing the y-axis at 4','A vertical line at x = 4','A parabola opening up'], answer:0, hint:'Negative slope means the line falls as x increases.', explanation:'The graph should decrease and cross y = 4.'},
+  {type:'entry', prompt:'The cost of x notebooks is y = 1.5x + 4. What is the cost for 6 notebooks?', answer:'13', hint:'Substitute x = 6.', explanation:'1.5(6) + 4 = 9 + 4 = 13.', keypad:'basic'},
+  {type:'mc', prompt:'If the rate of change is 0, the graph is', choices:['horizontal','vertical','curved','undefined'], answer:0, hint:'No rise means a flat line.', explanation:'A slope of 0 creates a horizontal line.'},
+  {type:'multi', prompt:'Select all statements that are true for the equation y = -4x + 9.', choices:['The slope is -4','The y-intercept is 9','The line increases from left to right','The line is linear','When x = 0, y = 9'], answer:[0,1,3,4], hint:'Test each statement against slope-intercept form.', explanation:'The true statements are slope -4, intercept 9, linear, and y = 9 when x = 0.'},
+  {type:'entry', prompt:'What is the y-intercept of the line through (2, 7) with slope 3?', answer:'1', hint:'Use y = 3x + b with the point.', explanation:'7 = 3(2) + b, so b = 1.', keypad:'basic'},
+  {type:'equation', prompt:'Write an equation for a line with slope -2 and y-intercept 5.', answer:['y=-2x+5','y = -2x + 5'], hint:'Substitute into y = mx + b.', explanation:'y = -2x + 5.', keypad:'equation'},
+  {type:'mc', prompt:'Which description matches a function with slope 1/2?', choices:['It rises 1 for every 2 to the right','It rises 2 for every 1 to the right','It falls 1 for every 2 to the right','It has a y-intercept of 1/2'], answer:0, hint:'Slope = rise/run.', explanation:'A slope of 1/2 means rise 1, run 2.'},
+  {type:'entry', prompt:'A line goes through (1, 4) and has slope -1. What is the y-intercept?', answer:'5', hint:'Use y = -x + b and substitute the point.', explanation:'4 = -1 + b, so b = 5.', keypad:'basic'},
+  {type:'mc', prompt:'Which equation is NOT linear?', choices:['y = 5x - 2','y = 1/3x + 8','y = x(x + 1)','y = -7'], answer:2, hint:'Look for x multiplied by x.', explanation:'y = x(x + 1) = x² + x, which is quadratic, not linear.'}
+];
+
+const questions = shuffle(questionBank).slice(0, Math.min(30, questionBank.length));
+let index = 0;
+let correct = 0;
+let attempts = 0;
+let activeInput = null;
+let timerId = null;
+let gameStarted = false;
+
+const app = document.getElementById('app');
+
+app.innerHTML = `
+  ${buildHeader('Linear Functions Lab','OST-style linear-function practice with keypad, select-all, drop-downs, and equation entry')}
+  <div class="grid grid-2">
+    <div class="panel side">
+      <h3>Start</h3>
+      <p class="muted">Same build rules as your other hubs: answer shuffle, auto-advance on correct, hint on miss, explanation linger, restart button, timer, and accuracy tracking.</p>
+      <div class="tools">
+        <label class="small">Student name<br><input id="studentName" class="answer-box" style="min-height:44px" placeholder="Enter student name" /></label>
+        <button class="btn" id="beginBtn">Begin Linear Functions Lab</button>
+        <a class="btn secondary center" href="../index.html">Back to Hub</a>
+      </div>
+      <div style="margin-top:18px">
+        <div class="small muted">Progress</div>
+        <div class="progress"><span id="progressBar"></span></div>
+      </div>
+      <div class="footer-controls">
+        <button class="btn secondary" id="restartBtn" disabled>Restart</button>
+      </div>
+      <div class="notice" style="margin-top:16px">Hint on miss does not reveal the final answer. Students must correct it and then the game auto-advances on correct.</div>
+    </div>
+    <div class="panel question" id="stage">
+      <div class="center muted" style="padding:28px 12px">Press <strong>Begin</strong> to start.</div>
+    </div>
+  </div>
+`;
+
+document.getElementById('beginBtn').onclick = startGame;
+document.getElementById('restartBtn').onclick = () => location.reload();
+
+function startGame(){
+  if(gameStarted) return;
+  gameStarted = true;
+
+  document.getElementById('studentNameOut').textContent =
+    document.getElementById('studentName').value.trim() || 'Guest';
+  document.getElementById('startedOut').textContent = todayStamp();
+  document.getElementById('restartBtn').disabled = false;
+
+  if(timerId) clearInterval(timerId);
+  timerId = startTimer(document.getElementById('timerOut'));
+
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = questions[index];
+
+  if(!q){
+    clearInterval(timerId);
+    const stage = document.getElementById('stage');
+    stage.innerHTML = `
+      <div class="center" style="padding:30px 12px">
+        <div class="qnum" style="margin:0 auto 12px;background:var(--good)">✓</div>
+        <h2>Round Complete</h2>
+        <p class="muted">Final accuracy: <strong>${calcAccuracy(correct,attempts)}%</strong> • Correct: <strong>${correct}</strong> / ${questions.length}</p>
+        <div class="footer-controls" style="justify-content:center">
+          <button class="btn" onclick="location.reload()">Play Again</button>
+          <a class="btn secondary" href="../index.html">Back to Hub</a>
+        </div>
+      </div>
+    `;
+    document.getElementById('progressOut').textContent = `${questions.length}/${questions.length}`;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    document.getElementById('progressBar').style.width = '100%';
+    return;
+  }
+
+  document.getElementById('progressOut').textContent = `${index + 1}/${questions.length}`;
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+  document.getElementById('progressBar').style.width = `${(index / questions.length) * 100}%`;
+
+  const stage = document.getElementById('stage');
+  let body = '';
+
+  if(q.type === 'mc' || q.type === 'multi'){
+    const labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const items = q.choices.map((c,i) => ({ text:c, idx:i }));
+    q.renderChoices = shuffle(items);
+
+    body = `
+      <div class="choices">
+        ${q.renderChoices.map((c,i) => `
+          <label class="choice">
+            <input type="${q.type === 'mc' ? 'radio' : 'checkbox'}" name="choice" value="${c.idx}">
+            <span class="choice-label">${labels[i]}</span>
+            <span>${c.text}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'entry' || q.type === 'equation'){
+    body = `
+      <div class="answer-row">
+        <span class="small muted">Answer:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'multiField'){
+    body = `
+      <div class="multi-fields">
+        ${q.fields.map(f => `
+          <label class="field-line">
+            <span class="code">${f} =</span>
+            <input class="answer-small mf" data-key="${f}" autocomplete="off">
+          </label>
+        `).join('')}
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'dropdown'){
+    const parts = q.prompt.split(/\[.*?\]/g);
+    body = `
+      <div class="prompt">
+        ${parts[0]}
+        <select class="answer-small dd">
+          ${q.dropdowns[0].map(v => `<option>${v}</option>`).join('')}
+        </select>
+        ${parts[1]}
+        <select class="answer-small dd">
+          ${q.dropdowns[1].map(v => `<option>${v}</option>`).join('')}
+        </select>
+        ${parts[2] || ''}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  stage.innerHTML = `
+    <div class="q-meta">
+      <div class="flex">
+        <div class="qnum">${index + 1}</div>
+        <div>
+          <div class="small muted">Linear Functions Lab</div>
+          <div class="small">Question ${index + 1} of ${questions.length}</div>
+        </div>
+      </div>
+      <a class="btn secondary" href="../index.html">Exit</a>
+    </div>
+
+    <div class="prompt">${q.prompt}</div>
+    ${body}
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  if(q.type === 'entry' || q.type === 'equation'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, q.keypad || 'basic'));
+    input.focus();
+  }
+
+  if(q.type === 'multiField'){
+    const fields = [...document.querySelectorAll('.mf')];
+    activeInput = fields[0];
+    fields.forEach(f => f.addEventListener('focus', () => activeInput = f));
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, q.keypad || 'algebra'));
+    if(fields[0]) fields[0].focus();
+  }
+
+  document.getElementById('submitBtn').onclick = checkAnswer;
+}
+
+function normalize(s){
+  return String(s).replace(/\s+/g,'').toLowerCase();
+}
+
+function showFeedback(type, text){
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback show ${type}`;
+  fb.innerHTML = text;
+}
+
+function checkAnswer(){
+  const q = questions[index];
+  attempts++;
+
+  let ok = false;
+
+  if(q.type === 'mc'){
+    const picked = document.querySelector('input[name="choice"]:checked');
+    if(!picked) return showFeedback('bad','Select one answer first.');
+    ok = Number(picked.value) === q.answer;
+    markChoicesMC(q.answer);
+  }
+
+  if(q.type === 'multi'){
+    const picks = [...document.querySelectorAll('input[name="choice"]:checked')]
+      .map(x => Number(x.value))
+      .sort((a,b) => a - b);
+
+    if(!picks.length) return showFeedback('bad','Choose all answers you believe are correct.');
+
+    ok = JSON.stringify(picks) === JSON.stringify([...q.answer].sort((a,b) => a - b));
+    markChoicesMulti(q.answer);
+  }
+
+  if(q.type === 'entry'){
+    ok = normalize(document.getElementById('entryInput').value) === normalize(q.answer);
+  }
+
+  if(q.type === 'equation'){
+    const val = normalize(document.getElementById('entryInput').value);
+    ok = q.answer.some(ans => normalize(ans) === val);
+  }
+
+  if(q.type === 'multiField'){
+    const vals = Object.fromEntries(
+      [...document.querySelectorAll('.mf')].map(el => [el.dataset.key, normalize(el.value)])
+    );
+    ok = Object.keys(q.answer).every(k => vals[k] === normalize(q.answer[k]));
+  }
+
+  if(q.type === 'dropdown'){
+    const vals = [...document.querySelectorAll('.dd')].map(s => s.value);
+    ok = vals.every((v,i) => v === q.answer[i]);
+  }
+
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+
+  if(ok){
+    correct++;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    showFeedback('good', `<strong>Correct.</strong> ${q.explanation}`);
+    lockQuestionInputs();
+    setTimeout(() => {
+      index++;
+      renderQuestion();
+    }, 1900);
+  } else {
+    showFeedback('bad', `<strong>Not yet.</strong> Hint: ${q.hint}<br><span class="muted">Make a new selection or revise your answer, then try again.</span>`);
+  }
+}
+
+function lockQuestionInputs(){
+  document.querySelectorAll('input, select, button.kbtn').forEach(el => {
+    el.disabled = true;
+  });
+  const submitBtn = document.getElementById('submitBtn');
+  if(submitBtn) submitBtn.disabled = true;
+}
+
+function markChoicesMC(answerIdx){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(Number(input.value) === answerIdx){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function markChoicesMulti(answerSet){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(answerSet.includes(Number(input.value))){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+</script>
+</body>
+</html>
