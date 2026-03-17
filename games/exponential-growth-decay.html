@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exponential Growth & Decay — Algebra I OST Mastery</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+
+<script>
+// ---------- UTIL ----------
+function shuffle(a){
+  const arr=[...a];
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function norm(s){
+  return String(s).replace(/\s+/g,'').toLowerCase();
+}
+
+// ---------- CALCULATOR ----------
+function createCalculator(inputRef){
+  const wrap=document.createElement('div');
+  wrap.className='calc';
+
+  const keys=[
+    '7','8','9','4','5','6','1','2','3','0','.','⌫',
+    '+','-','*','/','(',')','clear'
+  ];
+
+  keys.forEach(k=>{
+    const b=document.createElement('button');
+    b.className='kbtn';
+    b.textContent=k;
+    b.onclick=()=>{
+      const el=inputRef();
+      if(!el)return;
+
+      if(k==='⌫'){
+        el.value=el.value.slice(0,-1);
+        return;
+      }
+      if(k==='clear'){
+        el.value='';
+        return;
+      }
+      el.value+=k;
+    };
+    wrap.appendChild(b);
+  });
+
+  return wrap;
+}
+
+// ---------- QUESTION BANK (30) ----------
+const bank = [
+
+{type:'mc',
+q:`Which situation represents exponential growth?`,
+choices:[
+"A savings account earning 5% interest each year",
+"Adding $100 each year",
+"A car losing $500 value yearly",
+"A line increasing at a constant rate"
+],
+a:0,
+exp:"Growth by a constant percent = exponential."
+},
+
+{type:'mc',
+q:`Which represents exponential decay?`,
+choices:[
+"y = 2x + 5",
+"y = 0.8x",
+"y = 5(0.5)^x",
+"y = x²"
+],
+a:2,
+exp:"Base less than 1 = decay."
+},
+
+{type:'input',
+q:`Evaluate: 3(2)^2`,
+a:['12'],
+exp:"3 × 4 = 12"
+},
+
+{type:'input',
+q:`Evaluate: 5(0.5)^2`,
+a:['1.25'],
+exp:"5 × 0.25 = 1.25"
+},
+
+{type:'mc',
+q:`In y = 4(3)^x, what is the growth factor?`,
+choices:["4","3","x","1"],
+a:1,
+exp:"Base = 3"
+},
+
+{type:'mc',
+q:`In y = 6(0.2)^x, the function is`,
+choices:[
+"Linear",
+"Exponential growth",
+"Exponential decay",
+"Quadratic"
+],
+a:2,
+exp:"Base < 1 = decay"
+},
+
+{type:'input',
+q:`Evaluate: 2(3)^3`,
+a:['54'],
+exp:"2 × 27 = 54"
+},
+
+{type:'mc',
+q:`Which graph would show exponential growth?`,
+choices:[
+"Curve increasing faster over time",
+"Straight line",
+"Curve decreasing",
+"Horizontal line"
+],
+a:0,
+exp:"Growth curves upward faster."
+},
+
+{type:'input',
+q:`Evaluate: 10(0.1)^2`,
+a:['0.1'],
+exp:"10 × 0.01 = 0.1"
+},
+
+{type:'mc',
+q:`If a population doubles each year, what is the growth factor?`,
+choices:["2","1","0.5","10"],
+a:0,
+exp:"Doubling = factor of 2"
+},
+
+{type:'input',
+q:`Evaluate: 4(2)^4`,
+a:['64'],
+exp:"4 × 16 = 64"
+},
+
+{type:'mc',
+q:`Which equation shows decay?`,
+choices:[
+"y = 5(1.2)^x",
+"y = 3(0.7)^x",
+"y = 2x + 4",
+"y = x²"
+],
+a:1,
+exp:"0.7 < 1 → decay"
+},
+
+{type:'input',
+q:`Evaluate: 6(0.5)^3`,
+a:['0.75'],
+exp:"6 × 0.125 = 0.75"
+},
+
+{type:'mc',
+q:`What happens in exponential growth?`,
+choices:[
+"Increases by constant percent",
+"Increases by constant amount",
+"Decreases linearly",
+"Stays constant"
+],
+a:0,
+exp:"Key feature = percent change"
+},
+
+{type:'input',
+q:`Evaluate: 8(2)^3`,
+a:['64'],
+exp:"8 × 8 = 64"
+},
+
+{type:'mc',
+q:`Which base represents fastest growth?`,
+choices:["1.1","2","3","0.5"],
+a:2,
+exp:"Larger base = faster growth"
+},
+
+{type:'input',
+q:`Evaluate: 3(4)^2`,
+a:['48'],
+exp:"3 × 16 = 48"
+},
+
+{type:'mc',
+q:`Which base represents fastest decay?`,
+choices:["0.9","0.5","0.8","1.2"],
+a:1,
+exp:"Smaller base → faster decay"
+},
+
+{type:'input',
+q:`Evaluate: 2(5)^2`,
+a:['50'],
+exp:"2 × 25 = 50"
+},
+
+{type:'mc',
+q:`In y = 7(2)^x, what is the initial value?`,
+choices:["7","2","x","14"],
+a:0,
+exp:"Initial = coefficient"
+},
+
+{type:'input',
+q:`Evaluate: 9(0.5)^2`,
+a:['2.25'],
+exp:"9 × 0.25 = 2.25"
+},
+
+{type:'mc',
+q:`Which equation grows slowest?`,
+choices:["y=2(1.1)^x","y=2(3)^x","y=2(5)^x","y=2(10)^x"],
+a:0,
+exp:"Smallest base grows slowest"
+},
+
+{type:'input',
+q:`Evaluate: 5(3)^2`,
+a:['45'],
+exp:"5 × 9 = 45"
+},
+
+{type:'mc',
+q:`Which graph shows decay?`,
+choices:[
+"Curve downward flattening",
+"Line increasing",
+"Line decreasing",
+"Parabola"
+],
+a:0,
+exp:"Decay curves downward"
+},
+
+{type:'input',
+q:`Evaluate: 4(0.5)^4`,
+a:['0.25'],
+exp:"4 × 0.0625 = 0.25"
+},
+
+{type:'mc',
+q:`If bacteria triples, the factor is`,
+choices:["2","3","1","0.3"],
+a:1,
+exp:"Triples = 3"
+},
+
+{type:'input',
+q:`Evaluate: 7(2)^2`,
+a:['28'],
+exp:"7 × 4 = 28"
+},
+
+{type:'mc',
+q:`Which is NOT exponential?`,
+choices:[
+"y = 2(3)^x",
+"y = 5(0.5)^x",
+"y = 2x + 3",
+"y = 4(1.1)^x"
+],
+a:2,
+exp:"Linear function"
+},
+
+{type:'input',
+q:`Evaluate: 6(3)^2`,
+a:['54'],
+exp:"6 × 9 = 54"
+},
+
+{type:'mc',
+q:`Which best describes exponential decay?`,
+choices:[
+"Decreases by percent",
+"Decreases by constant amount",
+"Increases rapidly",
+"Stays same"
+],
+a:0,
+exp:"Decay = percent decrease"
+}
+
+];
+
+// ---------- GAME STATE ----------
+const questions = shuffle(bank).slice(0,30);
+let i=0, correct=0, attempts=0;
+let activeInput=null;
+
+// ---------- UI ----------
+const app=document.getElementById('app');
+
+function render(){
+  const q=questions[i];
+  if(!q){
+    app.innerHTML=`<h2>Complete!</h2>
+    Accuracy: ${Math.round(correct/attempts*100)}%`;
+    return;
+  }
+
+  let html=`<div class="panel">
+  <h2>Question ${i+1}/30</h2>
+  <div>${q.q}</div>`;
+
+  if(q.type==='mc'){
+    const choices=shuffle(q.choices.map((c,idx)=>({c,idx})));
+    q._choices=choices;
+
+    html+=choices.map(ch=>`
+    <label class="choice">
+    <input type="radio" name="c" value="${ch.idx}">
+    ${ch.c}
+    </label>`).join('');
+
+    html+=`<button id="submit">Submit</button>`;
+  }
+
+  if(q.type==='input'){
+    html+=`
+    <input id="input">
+    <div id="calc"></div>
+    <button id="submit">Submit</button>`;
+  }
+
+  html+=`<div id="feedback"></div></div>`;
+  app.innerHTML=html;
+
+  if(q.type==='input'){
+    activeInput=document.getElementById('input');
+    document.getElementById('calc')
+      .appendChild(createCalculator(()=>activeInput));
+  }
+
+  document.getElementById('submit').onclick=check;
+}
+
+function check(){
+  const q=questions[i];
+  attempts++;
+  let ok=false;
+
+  if(q.type==='mc'){
+    const sel=document.querySelector('input[name="c"]:checked');
+    if(!sel) return;
+    ok=Number(sel.value)===q.a;
+  }
+
+  if(q.type==='input'){
+    ok=q.a.some(a=>norm(a)===norm(activeInput.value));
+  }
+
+  const fb=document.getElementById('feedback');
+
+  if(ok){
+    correct++;
+    fb.innerHTML="Correct! "+q.exp;
+    setTimeout(()=>{i++;render();},1500);
+  }else{
+    fb.innerHTML="Try again: "+q.exp;
+  }
+}
+
+render();
+</script>
+
+</body>
+</html>
