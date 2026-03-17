@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Graph Equation Builder — Algebra I OST Mastery Hub</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+
+<script>
+function shuffle(arr){
+  const a = [...arr];
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function formatTime(s){
+  const m = Math.floor(s / 60).toString().padStart(2,'0');
+  const sec = (s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function startTimer(el){
+  let sec = 0;
+  el.textContent = '00:00';
+  return setInterval(() => {
+    sec++;
+    el.textContent = formatTime(sec);
+  }, 1000);
+}
+
+function calcAccuracy(correct,total){
+  return total ? Math.round((correct / total) * 100) : 0;
+}
+
+function buildHeader(title, sub){
+  return `
+    <div class="panel header">
+      <div class="brand">
+        <div class="brand-badge">📈</div>
+        <div>
+          <h1>${title}</h1>
+          <div class="sub">${sub}</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <div class="pill">Student: <span id="studentNameOut">Guest</span></div>
+        <div class="pill">Progress: <span id="progressOut">0/0</span></div>
+        <div class="pill">Accuracy: <span id="accuracyOut">0%</span></div>
+        <div class="pill">Timer: <span id="timerOut">00:00</span></div>
+        <div class="pill">Started: <span id="startedOut">—</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function todayStamp(){
+  return new Date().toLocaleString();
+}
+
+function normalize(s){
+  return String(s)
+    .replace(/\s+/g,'')
+    .replace(/\*+/g,'')
+    .replace(/−/g,'-')
+    .toLowerCase();
+}
+
+function makeKeypad(targetResolver, mode='equation'){
+  const shell = document.createElement('div');
+  shell.className = 'keypad-shell';
+
+  const left = document.createElement('div');
+  left.className = 'keypad-core';
+
+  const right = document.createElement('div');
+  right.className = 'keypad-ext';
+
+  const core = ['1','2','3','4','5','6','7','8','9','0','.','⌫'];
+
+  core.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'kbtn';
+    b.type = 'button';
+    b.textContent = v;
+    b.onclick = () => press(v);
+    left.appendChild(b);
+  });
+
+  let extras = [];
+  if(mode === 'basic') extras = ['-','/','(',')','clear'];
+  if(mode === 'slope') extras = ['-','/','clear'];
+  if(mode === 'equation') extras = ['x','y','+','-','=','/','(',')','clear'];
+
+  extras.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'kbtn dark';
+    b.type = 'button';
+    b.textContent = v;
+    b.onclick = () => press(v);
+    right.appendChild(b);
+  });
+
+  shell.append(left, right);
+
+  function press(v){
+    const el = targetResolver();
+    if(!el) return;
+
+    if(v === '⌫'){
+      el.value = el.value.slice(0,-1);
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    if(v === 'clear'){
+      el.value = '';
+      el.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    el.value += v;
+    el.dispatchEvent(new Event('input'));
+  }
+
+  return shell;
+}
+
+function linePointsFromMB(m, b){
+  const pts = [];
+  for(let x = -5; x <= 5; x++){
+    const y = m * x + b;
+    if(Number.isInteger(y) && y >= -5 && y <= 5){
+      pts.push([x, y]);
+    }
+  }
+  return pts;
+}
+
+function drawGraphFromLine(m, b){
+  const size = 280;
+  const step = 24;
+  const center = size / 2;
+  const points = linePointsFromMB(m, b);
+
+  let svg = `<div class="graph-box"><svg viewBox="0 0 ${size} ${size}" aria-label="coordinate grid">`;
+
+  for(let i = 0; i <= size; i += step){
+    svg += `<line x1="0" y1="${i}" x2="${size}" y2="${i}" stroke="#e8eef8" stroke-width="1"/>`;
+    svg += `<line x1="${i}" y1="0" x2="${i}" y2="${size}" stroke="#e8eef8" stroke-width="1"/>`;
+  }
+
+  svg += `<line x1="0" y1="${center}" x2="${size}" y2="${center}" stroke="#111" stroke-width="1.8"/>`;
+  svg += `<line x1="${center}" y1="0" x2="${center}" y2="${size}" stroke="#111" stroke-width="1.8"/>`;
+
+  for(let n = -5; n <= 5; n++){
+    const px = center + n * step;
+    const py = center - n * step;
+    if(n !== 0){
+      svg += `<text x="${px-4}" y="${center+16}" font-size="10" fill="#334">${n}</text>`;
+      svg += `<text x="${center+6}" y="${py+4}" font-size="10" fill="#334">${n}</text>`;
+    }
+  }
+
+  const x1 = -5;
+  const y1 = m * x1 + b;
+  const x2 = 5;
+  const y2 = m * x2 + b;
+
+  const sx1 = center + x1 * step;
+  const sy1 = center - y1 * step;
+  const sx2 = center + x2 * step;
+  const sy2 = center - y2 * step;
+
+  svg += `<line x1="${sx1}" y1="${sy1}" x2="${sx2}" y2="${sy2}" stroke="#d43f3a" stroke-width="3"/>`;
+
+  points.slice(0, 4).forEach(([x,y]) => {
+    const px = center + x * step;
+    const py = center - y * step;
+    svg += `<circle cx="${px}" cy="${py}" r="4.5" fill="#d43f3a"/>`;
+  });
+
+  svg += `</svg></div>`;
+  return svg;
+}
+
+function drawGraphFromPoints(points){
+  const size = 280;
+  const step = 24;
+  const center = size / 2;
+  let svg = `<div class="graph-box"><svg viewBox="0 0 ${size} ${size}" aria-label="coordinate grid">`;
+
+  for(let i = 0; i <= size; i += step){
+    svg += `<line x1="0" y1="${i}" x2="${size}" y2="${i}" stroke="#e8eef8" stroke-width="1"/>`;
+    svg += `<line x1="${i}" y1="0" x2="${i}" y2="${size}" stroke="#e8eef8" stroke-width="1"/>`;
+  }
+
+  svg += `<line x1="0" y1="${center}" x2="${size}" y2="${center}" stroke="#111" stroke-width="1.8"/>`;
+  svg += `<line x1="${center}" y1="0" x2="${center}" y2="${size}" stroke="#111" stroke-width="1.8"/>`;
+
+  for(let n = -5; n <= 5; n++){
+    const px = center + n * step;
+    const py = center - n * step;
+    if(n !== 0){
+      svg += `<text x="${px-4}" y="${center+16}" font-size="10" fill="#334">${n}</text>`;
+      svg += `<text x="${center+6}" y="${py+4}" font-size="10" fill="#334">${n}</text>`;
+    }
+  }
+
+  if(points.length >= 2){
+    const [a,b] = points;
+    const m = (b[1] - a[1]) / (b[0] - a[0]);
+    const intercept = a[1] - m * a[0];
+    const x1 = -5;
+    const y1 = m * x1 + intercept;
+    const x2 = 5;
+    const y2 = m * x2 + intercept;
+
+    svg += `<line x1="${center + x1*step}" y1="${center - y1*step}" x2="${center + x2*step}" y2="${center - y2*step}" stroke="#d43f3a" stroke-width="3"/>`;
+  }
+
+  points.forEach(([x,y]) => {
+    svg += `<circle cx="${center + x*step}" cy="${center - y*step}" r="5" fill="#d43f3a"/>`;
+  });
+
+  svg += `</svg></div>`;
+  return svg;
+}
+
+function tableHtml(headers, rows){
+  return `
+    <div class="table-box">
+      <table style="width:100%;border-collapse:collapse;background:#fff;color:#111;border-radius:12px;overflow:hidden">
+        <thead>
+          <tr>
+            ${headers.map(h => `<th style="border:1px solid #d7e0f0;padding:10px;background:#eef3fb">${h}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              ${r.map(c => `<td style="border:1px solid #d7e0f0;padding:10px;text-align:center">${c}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function equationMatches(val, accepted){
+  const n = normalize(val);
+  return accepted.some(a => normalize(a) === n);
+}
+
+const questionBank = [
+  {
+    type:'mc',
+    prompt:`Which equation matches this graph?<br><br>${drawGraphFromLine(2,2)}`,
+    choices:['y = 2x + 2','y = x + 2','y = 2x - 2','y = -2x + 2'],
+    answer:0,
+    hint:'Find the y-intercept first, then the slope.',
+    explanation:'The line crosses the y-axis at 2 and rises 2 for every 1 right, so y = 2x + 2.'
+  },
+  {
+    type:'equation',
+    prompt:`Write the equation of the line shown on the graph.<br><br>${drawGraphFromLine(3,-1)}`,
+    answer:['y=3x-1','y = 3x - 1'],
+    hint:'The line crosses the y-axis at -1 and rises 3 for every 1 right.',
+    explanation:'The y-intercept is -1 and the slope is 3, so the equation is y = 3x - 1.'
+  },
+  {
+    type:'mc',
+    prompt:`A line crosses the y-axis at 4 and falls 1 for every 1 unit to the right. Which equation matches?`,
+    choices:['y = -x + 4','y = x + 4','y = -4x + 1','y = x - 4'],
+    answer:0,
+    hint:'Falling means a negative slope.',
+    explanation:'The slope is -1 and the y-intercept is 4, so y = -x + 4.'
+  },
+  {
+    type:'slopeEntry',
+    prompt:`What is the slope of the line through the points (1, 2) and (4, 8)?`,
+    answer:['2'],
+    hint:'Use rise over run: (8 - 2) / (4 - 1).',
+    explanation:'The slope is 6/3 = 2.',
+    keypad:'slope'
+  },
+  {
+    type:'mc',
+    prompt:`Which graph description matches y = -2x + 5?`,
+    choices:[
+      'A line decreasing from left to right and crossing the y-axis at 5',
+      'A line increasing from left to right and crossing the y-axis at 5',
+      'A horizontal line at y = 5',
+      'A line decreasing from left to right and crossing the y-axis at -5'
+    ],
+    answer:0,
+    hint:'Negative slope means decreasing.',
+    explanation:'The graph must decrease left to right and cross the y-axis at 5.'
+  },
+  {
+    type:'equation',
+    prompt:`Write the equation of the line passing through the points (0, 3) and (2, 7).`,
+    answer:['y=2x+3','y = 2x + 3'],
+    hint:'The y-intercept is visible from (0, 3). Find slope from the two points.',
+    explanation:'The slope is (7 - 3)/(2 - 0) = 2, and the y-intercept is 3, so y = 2x + 3.'
+  },
+  {
+    type:'mc',
+    prompt:`If a line has slope 0, what does its graph look like?`,
+    choices:['Horizontal','Vertical','Increasing diagonal','Decreasing diagonal'],
+    answer:0,
+    hint:'A slope of 0 means no vertical change.',
+    explanation:'A slope of 0 produces a horizontal line.'
+  },
+  {
+    type:'equation',
+    prompt:`A line has slope -3 and y-intercept 2. Write its equation.`,
+    answer:['y=-3x+2','y = -3x + 2'],
+    hint:'Use slope-intercept form y = mx + b.',
+    explanation:'With slope -3 and intercept 2, the equation is y = -3x + 2.'
+  },
+  {
+    type:'mc',
+    prompt:`Which equation has slope 4 and y-intercept -3?`,
+    choices:['y = 4x - 3','y = -4x - 3','y = 3x + 4','y = 4x + 3'],
+    answer:0,
+    hint:'Match m with 4 and b with -3.',
+    explanation:'The correct equation is y = 4x - 3.'
+  },
+  {
+    type:'slopeEntry',
+    prompt:`Find the slope of the line through (-2, 1) and (2, 5).`,
+    answer:['1'],
+    hint:'Use (5 - 1) / (2 - (-2)).',
+    explanation:'The slope is 4/4 = 1.',
+    keypad:'slope'
+  },
+  {
+    type:'mc',
+    prompt:`Which equation matches this graph?<br><br>${drawGraphFromLine(-1,4)}`,
+    choices:['y = -x + 4','y = x + 4','y = -4x + 1','y = x - 4'],
+    answer:0,
+    hint:'The line falls 1 for every 1 to the right.',
+    explanation:'The y-intercept is 4 and the slope is -1, so y = -x + 4.'
+  },
+  {
+    type:'equation',
+    prompt:`Write the equation of the line shown on this graph.<br><br>${drawGraphFromLine(1, -2)}`,
+    answer:['y=x-2','y = x - 2'],
+    hint:'Find the intercept where the line crosses the y-axis.',
+    explanation:'The line rises 1 for every 1 right and crosses the y-axis at -2, so y = x - 2.'
+  },
+  {
+    type:'mc',
+    prompt:`What is the y-intercept of y = 5x + 7?`,
+    choices:['7','5','12','-7'],
+    answer:0,
+    hint:'In y = mx + b, b is the y-intercept.',
+    explanation:'The constant term is 7, so the y-intercept is 7.'
+  },
+  {
+    type:'equation',
+    prompt:`A line passes through (0, -5) and (3, 1). Write its equation.`,
+    answer:['y=2x-5','y = 2x - 5'],
+    hint:'Use the point with x = 0 to find the intercept.',
+    explanation:'The slope is (1 - (-5))/3 = 2 and the intercept is -5, so y = 2x - 5.'
+  },
+  {
+    type:'mc',
+    prompt:`Which statement is true about a line with positive slope?`,
+    choices:[
+      'It rises from left to right',
+      'It falls from left to right',
+      'It is always horizontal',
+      'It must cross the origin'
+    ],
+    answer:0,
+    hint:'Positive means the output increases as x increases.',
+    explanation:'A positive slope line rises from left to right.'
+  },
+  {
+    type:'slopeEntry',
+    prompt:`What is the slope of the line shown by these points?<br><br>${drawGraphFromPoints([[-2,-1],[2,3]])}`,
+    answer:['1'],
+    hint:'Count rise and run between the two points.',
+    explanation:'The line rises 4 and runs 4, so the slope is 1.',
+    keypad:'slope'
+  },
+  {
+    type:'mc',
+    prompt:`Which line is parallel to y = 2x - 1?`,
+    choices:['y = 2x + 5','y = -2x + 5','y = x + 5','y = 5'],
+    answer:0,
+    hint:'Parallel lines have the same slope.',
+    explanation:'A parallel line must also have slope 2, so y = 2x + 5.'
+  },
+  {
+    type:'equation',
+    prompt:`Write the equation of the line with slope 1/2 and y-intercept 4.`,
+    answer:['y=0.5x+4','y = 0.5x + 4','y=x/2+4','y = x/2 + 4'],
+    hint:'Use y = mx + b.',
+    explanation:'The line has slope 1/2 and intercept 4, so y = 0.5x + 4.'
+  },
+  {
+    type:'mc',
+    prompt:`What is the slope of a horizontal line?`,
+    choices:['0','Undefined','1','-1'],
+    answer:0,
+    hint:'No rise means slope 0.',
+    explanation:'Horizontal lines have slope 0.'
+  },
+  {
+    type:'tableEquation',
+    prompt:`Write the equation represented by this table.`,
+    headers:['x','y'],
+    rows:[[0,1],[1,3],[2,5],[3,7]],
+    answer:['y=2x+1','y = 2x + 1'],
+    hint:'Look at how y changes when x increases by 1.',
+    explanation:'The slope is 2 and the y-intercept is 1, so the equation is y = 2x + 1.'
+  },
+  {
+    type:'mc',
+    prompt:`Which graph matches y = x - 3?`,
+    choices:[
+      'A line rising left to right and crossing the y-axis at -3',
+      'A line falling left to right and crossing the y-axis at -3',
+      'A line rising left to right and crossing the y-axis at 3',
+      'A horizontal line at y = -3'
+    ],
+    answer:0,
+    hint:'Slope 1 means rising. Intercept -3 means it crosses below the origin.',
+    explanation:'The line rises with slope 1 and crosses the y-axis at -3.'
+  },
+  {
+    type:'equation',
+    prompt:`A line crosses the y-axis at 6 and falls 2 for every 1 to the right. Write the equation.`,
+    answer:['y=-2x+6','y = -2x + 6'],
+    hint:'Falling means negative slope.',
+    explanation:'The slope is -2 and the y-intercept is 6, so y = -2x + 6.'
+  },
+  {
+    type:'mc',
+    prompt:`Which equation matches this graph?<br><br>${drawGraphFromLine(0,-2)}`,
+    choices:['y = -2','x = -2','y = 2x - 2','y = -x - 2'],
+    answer:0,
+    hint:'A horizontal line has equation y = constant.',
+    explanation:'The graph is horizontal at y = -2, so the equation is y = -2.'
+  },
+  {
+    type:'slopeEntry',
+    prompt:`Find the slope of the line through (3, -1) and (5, -5).`,
+    answer:['-2'],
+    hint:'Use (-5 - (-1)) / (5 - 3).',
+    explanation:'The slope is -4/2 = -2.',
+    keypad:'slope'
+  },
+  {
+    type:'mc',
+    prompt:`A line passes through (0, 2) and rises 1 for every 3 units to the right. Which equation matches?`,
+    choices:['y = (1/3)x + 2','y = 3x + 2','y = -(1/3)x + 2','y = x + 3'],
+    answer:0,
+    hint:'Rise/run = 1/3.',
+    explanation:'The slope is 1/3 and the y-intercept is 2, so y = (1/3)x + 2.'
+  },
+  {
+    type:'tableSlope',
+    prompt:`What is the slope of the line represented by this table?`,
+    headers:['x','y'],
+    rows:[[0,-1],[1,1],[2,3],[3,5]],
+    answer:['2'],
+    hint:'How much does y change when x increases by 1?',
+    explanation:'The y-values increase by 2 each time, so the slope is 2.'
+  },
+  {
+    type:'equation',
+    prompt:`Write the equation of the line shown on the graph.<br><br>${drawGraphFromLine(-2,-1)}`,
+    answer:['y=-2x-1','y = -2x - 1'],
+    hint:'The line crosses the y-axis at -1 and falls 2 for every 1 to the right.',
+    explanation:'The slope is -2 and the intercept is -1, so y = -2x - 1.'
+  },
+  {
+    type:'mc',
+    prompt:`Which line is perpendicular to a line with slope 1?`,
+    choices:['A line with slope -1','A line with slope 1','A horizontal line','A line with slope 2'],
+    answer:0,
+    hint:'Perpendicular slopes are negative reciprocals.',
+    explanation:'The negative reciprocal of 1 is -1.'
+  },
+  {
+    type:'equation',
+    prompt:`A line has slope 0 and passes through (0, 5). Write the equation.`,
+    answer:['y=5','y = 5'],
+    hint:'A horizontal line keeps y constant.',
+    explanation:'Since the line is horizontal and goes through y = 5, the equation is y = 5.'
+  },
+  {
+    type:'mc',
+    prompt:`Which equation matches the points shown on the graph?<br><br>${drawGraphFromPoints([[0,1],[2,5]])}`,
+    choices:['y = 2x + 1','y = x + 1','y = 2x - 1','y = -2x + 1'],
+    answer:0,
+    hint:'Use the point on the y-axis to get the intercept.',
+    explanation:'The slope is (5 - 1)/(2 - 0) = 2 and the y-intercept is 1, so y = 2x + 1.'
+  }
+];
+
+const questions = shuffle(questionBank).slice(0, Math.min(30, questionBank.length));
+let index = 0;
+let correct = 0;
+let attempts = 0;
+let activeInput = null;
+let timerId = null;
+let gameStarted = false;
+
+const app = document.getElementById('app');
+
+app.innerHTML = `
+  ${buildHeader('Graph Equation Builder','OST-style graph reading, slope, intercepts, and equation writing')}
+  <div class="grid grid-2">
+    <div class="panel side">
+      <h3>Start</h3>
+      <p class="muted">This build focuses on reading graphs, finding slope, identifying y-intercepts, and writing equations in slope-intercept form.</p>
+      <div class="tools">
+        <label class="small">Student name<br><input id="studentName" class="answer-box" style="min-height:44px" placeholder="Enter student name" /></label>
+        <button class="btn" id="beginBtn">Begin Graph Equation Builder</button>
+        <a class="btn secondary center" href="../index.html">Back to Hub</a>
+      </div>
+      <div style="margin-top:18px">
+        <div class="small muted">Progress</div>
+        <div class="progress"><span id="progressBar"></span></div>
+      </div>
+      <div class="footer-controls">
+        <button class="btn secondary" id="restartBtn" disabled>Restart</button>
+      </div>
+      <div class="notice" style="margin-top:16px">Hints guide students without giving the final answer. Correct answers auto-advance after the explanation lingers briefly.</div>
+    </div>
+    <div class="panel question" id="stage">
+      <div class="center muted" style="padding:28px 12px">Press <strong>Begin</strong> to start.</div>
+    </div>
+  </div>
+`;
+
+document.getElementById('beginBtn').onclick = startGame;
+document.getElementById('restartBtn').onclick = () => location.reload();
+
+function startGame(){
+  if(gameStarted) return;
+  gameStarted = true;
+
+  document.getElementById('studentNameOut').textContent =
+    document.getElementById('studentName').value.trim() || 'Guest';
+  document.getElementById('startedOut').textContent = todayStamp();
+  document.getElementById('restartBtn').disabled = false;
+
+  if(timerId) clearInterval(timerId);
+  timerId = startTimer(document.getElementById('timerOut'));
+
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = questions[index];
+
+  if(!q){
+    clearInterval(timerId);
+    const stage = document.getElementById('stage');
+    stage.innerHTML = `
+      <div class="center" style="padding:30px 12px">
+        <div class="qnum" style="margin:0 auto 12px;background:var(--good)">✓</div>
+        <h2>Round Complete</h2>
+        <p class="muted">Final accuracy: <strong>${calcAccuracy(correct,attempts)}%</strong> • Correct: <strong>${correct}</strong> / ${questions.length}</p>
+        <div class="footer-controls" style="justify-content:center">
+          <button class="btn" onclick="location.reload()">Play Again</button>
+          <a class="btn secondary" href="../index.html">Back to Hub</a>
+        </div>
+      </div>
+    `;
+    document.getElementById('progressOut').textContent = `${questions.length}/${questions.length}`;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    document.getElementById('progressBar').style.width = '100%';
+    return;
+  }
+
+  document.getElementById('progressOut').textContent = `${index + 1}/${questions.length}`;
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+  document.getElementById('progressBar').style.width = `${(index / questions.length) * 100}%`;
+
+  const stage = document.getElementById('stage');
+  let body = '';
+
+  if(q.type === 'mc'){
+    const labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const items = q.choices.map((c,i) => ({ text:c, idx:i }));
+    q.renderChoices = shuffle(items);
+
+    body = `
+      <div class="choices">
+        ${q.renderChoices.map((c,i) => `
+          <label class="choice">
+            <input type="radio" name="choice" value="${c.idx}">
+            <span class="choice-label">${labels[i]}</span>
+            <span>${c.text}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'equation' || q.type === 'slopeEntry'){
+    body = `
+      <div class="answer-row">
+        <span class="small muted">Answer:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  if(q.type === 'tableEquation' || q.type === 'tableSlope'){
+    body = `
+      ${tableHtml(q.headers, q.rows)}
+      <div class="answer-row" style="margin-top:14px">
+        <span class="small muted">Answer:</span>
+        <input class="answer-box" id="entryInput" autocomplete="off">
+      </div>
+      <div class="tools" id="keypadHost"></div>
+      <div class="footer-controls">
+        <button class="btn" id="submitBtn">Check Answer</button>
+      </div>
+    `;
+  }
+
+  stage.innerHTML = `
+    <div class="q-meta">
+      <div class="flex">
+        <div class="qnum">${index + 1}</div>
+        <div>
+          <div class="small muted">Graph Equation Builder</div>
+          <div class="small">Question ${index + 1} of ${questions.length}</div>
+        </div>
+      </div>
+      <a class="btn secondary" href="../index.html">Exit</a>
+    </div>
+
+    <div class="prompt">${q.prompt}</div>
+    ${body}
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  if(q.type === 'equation'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, 'equation'));
+    input.focus();
+  }
+
+  if(q.type === 'slopeEntry'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, 'slope'));
+    input.focus();
+  }
+
+  if(q.type === 'tableEquation'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, 'equation'));
+    input.focus();
+  }
+
+  if(q.type === 'tableSlope'){
+    const input = document.getElementById('entryInput');
+    activeInput = input;
+    document.getElementById('keypadHost').appendChild(makeKeypad(() => activeInput, 'slope'));
+    input.focus();
+  }
+
+  document.getElementById('submitBtn').onclick = checkAnswer;
+}
+
+function showFeedback(type, text){
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback show ${type}`;
+  fb.innerHTML = text;
+}
+
+function lockQuestionInputs(){
+  document.querySelectorAll('input, select, button.kbtn').forEach(el => {
+    el.disabled = true;
+  });
+  const submitBtn = document.getElementById('submitBtn');
+  if(submitBtn) submitBtn.disabled = true;
+}
+
+function markChoicesMC(answerIdx){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(Number(input.value) === answerIdx){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function checkAnswer(){
+  const q = questions[index];
+  attempts++;
+  let ok = false;
+
+  if(q.type === 'mc'){
+    const picked = document.querySelector('input[name="choice"]:checked');
+    if(!picked) return showFeedback('bad','Select one answer first.');
+    ok = Number(picked.value) === q.answer;
+    markChoicesMC(q.answer);
+  }
+
+  if(q.type === 'equation'){
+    ok = equationMatches(document.getElementById('entryInput').value, q.answer);
+  }
+
+  if(q.type === 'slopeEntry' || q.type === 'tableSlope'){
+    ok = q.answer.some(a => normalize(a) === normalize(document.getElementById('entryInput').value));
+  }
+
+  if(q.type === 'tableEquation'){
+    ok = equationMatches(document.getElementById('entryInput').value, q.answer);
+  }
+
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+
+  if(ok){
+    correct++;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    showFeedback('good', `<strong>Correct.</strong> ${q.explanation}`);
+    lockQuestionInputs();
+    setTimeout(() => {
+      index++;
+      renderQuestion();
+    }, 1900);
+  } else {
+    showFeedback('bad', `<strong>Not yet.</strong> Hint: ${q.hint}<br><span class="muted">Revise your answer and try again.</span>`);
+  }
+}
+</script>
+</body>
+</html>
