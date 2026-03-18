@@ -8,10 +8,38 @@
 </head>
 <body>
 
-<div class="wrap" id="app"></div>
+<div class="wrap">
+
+  <div id="startScreen" class="panel">
+    <h2>Algebra Structure & Error Analysis</h2>
+    <p>Enter your name to begin</p>
+    <input id="studentName" class="answer-box" placeholder="Your name">
+    <br><br>
+    <button class="btn" onclick="startGame()">Start</button>
+  </div>
+
+  <div id="gameScreen" style="display:none">
+
+    <div class="panel hud">
+      <div><b id="nameDisplay"></b></div>
+      <div>Q: <span id="progress">1/30</span></div>
+      <div>Score: <span id="accuracy">0%</span></div>
+      <div>Time: <span id="timer">0:00</span></div>
+      <div>Started: <span id="startTime"></span></div>
+    </div>
+
+    <div class="panel">
+      <div id="questionText"></div>
+      <div id="choices"></div>
+      <button class="btn" onclick="submitAnswer()">Submit</button>
+      <div id="feedback"></div>
+    </div>
+
+  </div>
+
+</div>
 
 <script>
-// ---------- UTIL ----------
 function shuffle(a){
   const arr=[...a];
   for(let i=arr.length-1;i>0;i--){
@@ -21,374 +49,129 @@ function shuffle(a){
   return arr;
 }
 
-function norm(s){
-  return String(s).replace(/\s+/g,'').toLowerCase();
+let seconds=0;
+let timerInterval;
+
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const m=Math.floor(seconds/60);
+    const s=seconds%60;
+    document.getElementById('timer').textContent =
+      m + ":" + (s<10?"0":"") + s;
+  },1000);
 }
 
-// ---------- CALCULATOR ----------
-function createCalc(inputRef){
-  const wrap=document.createElement('div');
-  const keys=['7','8','9','4','5','6','1','2','3','0','+','-','*','/','⌫','clear'];
-
-  keys.forEach(k=>{
-    const b=document.createElement('button');
-    b.textContent=k;
-    b.className='kbtn';
-    b.onclick=()=>{
-      const el=inputRef();
-      if(!el)return;
-
-      if(k==='⌫'){el.value=el.value.slice(0,-1);return;}
-      if(k==='clear'){el.value='';return;}
-      el.value+=k;
-    };
-    wrap.appendChild(b);
-  });
-
-  return wrap;
-}
-
-// ---------- QUESTION BANK (30) ----------
 const bank = [
-
-{type:'mc',
-q:`A student solves: 2(x + 3) = 2x + 3. What mistake was made?`,
-choices:[
-"Did not distribute to both terms",
-"Added instead of multiplied",
-"Incorrect subtraction",
-"No mistake"
-],
-a:0,
-exp:"Distribution must apply to both x and 3"
-},
-
-{type:'mc',
-q:`Simplify: 3x + 2x`,
-choices:["5x","6x","5","x²"],
-a:0,
-exp:"Combine like terms"
-},
-
-{type:'mc',
-q:`A student says: 4(x + 2) = 4x + 2. What is wrong?`,
-choices:[
-"Forgot to multiply 4 × 2",
-"Multiplied incorrectly",
-"Should subtract instead",
-"Nothing is wrong"
-],
-a:0,
-exp:"Must distribute to both terms"
-},
-
-{type:'input',
-q:`Simplify: 5(x + 2)`,
-a:['5x+10'],
-exp:"Distribute 5 to both terms"
-},
-
-{type:'mc',
-q:`Simplify: 6x - 2x`,
-choices:["4x","8x","-4x","6x"],
-a:0,
-exp:"Combine like terms"
-},
-
-{type:'mc',
-q:`A student simplifies: 2x² + 3x = 5x³. What mistake?`,
-choices:[
-"Added unlike terms",
-"Incorrect exponent rule",
-"Multiplication error",
-"No mistake"
-],
-a:0,
-exp:"Cannot combine unlike terms"
-},
-
-{type:'input',
-q:`Simplify: 3(x - 4)`,
-a:['3x-12'],
-exp:"Distribute 3"
-},
-
-{type:'mc',
-q:`Which is correct?`,
-choices:[
-"2x + 3x = 5x",
-"2x + 3x = 6x",
-"2x + 3x = 5",
-"2x + 3x = x²"
-],
-a:0,
-exp:"Like terms combine"
-},
-
-{type:'mc',
-q:`A student says: (x + 2)² = x² + 4. What mistake?`,
-choices:[
-"Forgot middle term",
-"Incorrect exponent",
-"Wrong addition",
-"No mistake"
-],
-a:0,
-exp:"Should be x² + 4x + 4"
-},
-
-{type:'input',
-q:`Simplify: 2x + 3 + 4x`,
-a:['6x+3'],
-exp:"Combine like terms"
-},
-
-{type:'mc',
-q:`Solve: x + 5 = 10`,
-choices:["5","15","-5","10"],
-a:0,
-exp:"Subtract 5"
-},
-
-{type:'mc',
-q:`A student solves x - 3 = 7 → x = 4. What mistake?`,
-choices:[
-"Added instead of subtracting",
-"Subtracted incorrectly",
-"Correct solution",
-"Multiplied instead"
-],
-a:0,
-exp:"Should add 3 → x = 10"
-},
-
-{type:'input',
-q:`Solve: x + 6 = 9`,
-a:['3'],
-exp:"Subtract 6"
-},
-
-{type:'mc',
-q:`Simplify: 2(3x + 4)`,
-choices:["6x + 8","6x + 4","3x + 8","6x + 12"],
-a:0,
-exp:"Distribute 2"
-},
-
-{type:'input',
-q:`Simplify: 4x + 2x + 3`,
-a:['6x+3'],
-exp:"Combine like terms"
-},
-
-{type:'mc',
-q:`A student writes: 5x + 2 = 7x. What mistake?`,
-choices:[
-"Combined unlike terms incorrectly",
-"Multiplied incorrectly",
-"Added incorrectly",
-"No mistake"
-],
-a:0,
-exp:"Constants and variables are different"
-},
-
-{type:'input',
-q:`Solve: 2x = 10`,
-a:['5'],
-exp:"Divide by 2"
-},
-
-{type:'mc',
-q:`Simplify: 3x + 4 + 2x - 1`,
-choices:[
-"5x + 3",
-"5x + 5",
-"6x + 3",
-"3x + 3"
-],
-a:0,
-exp:"Combine like terms"
-},
-
-{type:'mc',
-q:`A student simplifies: 2(x + 3x) = 2x + 3x. What mistake?`,
-choices:[
-"Did not combine inside first",
-"Incorrect multiplication",
-"Added incorrectly",
-"No mistake"
-],
-a:0,
-exp:"Should combine 4x then multiply"
-},
-
-{type:'input',
-q:`Simplify: 2(x + 3x)`,
-a:['8x'],
-exp:"Combine then multiply"
-},
-
-{type:'mc',
-q:`Which shows correct distribution?`,
-choices:[
-"3(x + 2) = 3x + 6",
-"3(x + 2) = 3x + 2",
-"3(x + 2) = x + 6",
-"3(x + 2) = x + 2"
-],
-a:0,
-exp:"Multiply both terms"
-},
-
-{type:'input',
-q:`Solve: 3x = 15`,
-a:['5'],
-exp:"Divide by 3"
-},
-
-{type:'mc',
-q:`Simplify: 5x - x`,
-choices:["4x","6x","5","x"],
-a:0,
-exp:"Combine like terms"
-},
-
-{type:'input',
-q:`Simplify: 7(x + 1)`,
-a:['7x+7'],
-exp:"Distribute 7"
-},
-
-{type:'mc',
-q:`A student says: 2x × 3x = 5x². What mistake?`,
-choices:[
-"Added instead of multiplying coefficients",
-"Incorrect exponent",
-"Subtracted incorrectly",
-"No mistake"
-],
-a:0,
-exp:"2 × 3 = 6, not 5"
-},
-
-{type:'input',
-q:`Simplify: 2x × 3x`,
-a:['6x^2','6x2'],
-exp:"Multiply coefficients and variables"
-},
-
-{type:'mc',
-q:`Simplify: x + x + x`,
-choices:["3x","x³","x²","2x"],
-a:0,
-exp:"Add like terms"
-},
-
-{type:'input',
-q:`Simplify: 9x - 4x`,
-a:['5x'],
-exp:"Combine like terms"
-},
-
-{type:'mc',
-q:`Which is correct?`,
-choices:[
-"4(x + 5) = 4x + 20",
-"4(x + 5) = 4x + 5",
-"4(x + 5) = x + 20",
-"4(x + 5) = x + 5"
-],
-a:0,
-exp:"Distribute 4"
-},
-
-{type:'input',
-q:`Solve: x - 2 = 6`,
-a:['8'],
-exp:"Add 2"
-}
-
+  {q:"A student says 2(x + 3) = 2x + 3. What mistake was made?", choices:["The 2 was not distributed to both terms","The x should be squared","The 2 should be added, not multiplied","No mistake was made"], a:0, hint:"Distribution means multiplying every term inside the parentheses.", exp:"2(x + 3) should become 2x + 6."},
+  {q:"Simplify: 3x + 2x", choices:["5x","6x","5x²","x"], a:0, hint:"These are like terms.", exp:"3x + 2x = 5x."},
+  {q:"A student writes 4(x - 1) = 4x - 1. What mistake was made?", choices:["The 4 was not distributed to both terms","The sign should become positive","The x should be squared","No mistake was made"], a:0, hint:"Multiply 4 by both x and -1.", exp:"4(x - 1) = 4x - 4."},
+  {q:"Simplify: 6x - 2x + 5", choices:["4x + 5","8x + 5","4x","5x + 5"], a:0, hint:"Combine the x-terms only.", exp:"6x - 2x = 4x, so the result is 4x + 5."},
+  {q:"A student says x + x = x². What is the mistake?", choices:["Like terms were added incorrectly","The exponent should be 3","x cannot be added","There is no mistake"], a:0, hint:"Adding x and x is not multiplying.", exp:"x + x = 2x, not x²."},
+  {q:"Simplify: 5(x + 2)", choices:["5x + 10","5x + 2","10x + 2","7x"], a:0, hint:"Distribute 5 to each term.", exp:"5(x + 2) = 5x + 10."},
+  {q:"Solve: x + 7 = 12", choices:["x = 5","x = 19","x = -5","x = 7"], a:0, hint:"Undo +7 by subtracting 7.", exp:"x = 5."},
+  {q:"A student solves x - 4 = 9 and gets x = 5. What mistake was made?", choices:["The student subtracted instead of adding","The student multiplied instead of dividing","The student should have divided by 4","No mistake was made"], a:0, hint:"To undo -4, add 4.", exp:"x should equal 13, not 5."},
+  {q:"Simplify: 2x + 3 + 4x - 1", choices:["6x + 2","6x + 4","8x + 2","2x + 2"], a:0, hint:"Combine like terms and constants separately.", exp:"2x + 4x = 6x and 3 - 1 = 2."},
+  {q:"A student writes 3(x + 2x) = 3x + 2x. What mistake was made?", choices:["The 3 was not distributed to both terms","The x terms should not be combined","The coefficient should be 6","No mistake was made"], a:0, hint:"Every term inside must be multiplied by 3.", exp:"3(x + 2x) = 3x + 6x = 9x."},
+  {q:"Simplify: 7x - 4x", choices:["3x","11x","3","28x"], a:0, hint:"Subtract the coefficients.", exp:"7x - 4x = 3x."},
+  {q:"Which expression is equivalent to 2(x + 5)?", choices:["2x + 10","2x + 5","x + 10","7x"], a:0, hint:"Distribute 2 to both terms.", exp:"2(x + 5) = 2x + 10."},
+  {q:"A student says 2x × 3x = 5x². What mistake was made?", choices:["The coefficients were added instead of multiplied","The exponents were subtracted","The x terms cancel out","There is no mistake"], a:0, hint:"Multiply 2 and 3.", exp:"2x × 3x = 6x²."},
+  {q:"Solve: 3x = 18", choices:["x = 6","x = 15","x = 21","x = 3"], a:0, hint:"Divide both sides by 3.", exp:"x = 6."},
+  {q:"Simplify: x + x + x", choices:["3x","x³","x²","2x"], a:0, hint:"Add like terms.", exp:"x + x + x = 3x."},
+  {q:"A student says 4 + 2x = 6x. What mistake was made?", choices:["Unlike terms were combined","The coefficient of x should be 4","The constant should be multiplied","There is no mistake"], a:0, hint:"Constants and variable terms are not like terms.", exp:"4 and 2x cannot be combined."},
+  {q:"Simplify: 4(x - 3)", choices:["4x - 12","4x - 3","x - 12","4x + 12"], a:0, hint:"Distribute 4 to both terms.", exp:"4(x - 3) = 4x - 12."},
+  {q:"Solve: x - 2 = 11", choices:["x = 13","x = 9","x = -9","x = 2"], a:0, hint:"Add 2 to both sides.", exp:"x = 13."},
+  {q:"A student says (x + 4)² = x² + 16. What mistake was made?", choices:["The middle term was left out","The exponent should only apply to x","The 4 should become 8","There is no mistake"], a:0, hint:"Binomial squaring creates three terms.", exp:"(x + 4)² = x² + 8x + 16."},
+  {q:"Simplify: 9x + 1 - 5x + 2", choices:["4x + 3","14x + 3","4x - 1","5x + 2"], a:0, hint:"Combine x terms and constants separately.", exp:"9x - 5x = 4x and 1 + 2 = 3."},
+  {q:"Which is the correct simplification of 3(2x + 1)?", choices:["6x + 3","6x + 1","5x + 3","6x + 2"], a:0, hint:"Distribute 3 to both terms.", exp:"3(2x + 1) = 6x + 3."},
+  {q:"A student solves 2x = 14 and gets x = 12. What mistake was made?", choices:["The student subtracted instead of dividing","The student should have added 2","The student multiplied instead of dividing","No mistake was made"], a:0, hint:"To isolate x, divide by 2.", exp:"x should equal 7."},
+  {q:"Simplify: 8x - 3x + 4", choices:["5x + 4","11x + 4","5x","4x + 5"], a:0, hint:"Subtract the coefficients of the x terms.", exp:"8x - 3x = 5x."},
+  {q:"A student writes 5(x + 1) = 5x + 1. What mistake was made?", choices:["The 5 was not distributed to the 1","The x should be squared","The 1 should become 0","There is no mistake"], a:0, hint:"Distribute to both terms.", exp:"5(x + 1) = 5x + 5."},
+  {q:"Solve: 4x = 28", choices:["x = 7","x = 24","x = 32","x = 4"], a:0, hint:"Divide by 4.", exp:"x = 7."},
+  {q:"Simplify: 2x + 5x - x", choices:["6x","8x","7x","5x"], a:0, hint:"Combine the coefficients.", exp:"2 + 5 - 1 = 6, so the expression is 6x."},
+  {q:"Which expression is equivalent to 6(x + 2)?", choices:["6x + 12","6x + 2","12x + 2","8x"], a:0, hint:"Distribute 6 to both terms.", exp:"6(x + 2) = 6x + 12."},
+  {q:"A student says 3x + 4x = 12x. What mistake was made?", choices:["The coefficients were multiplied instead of added","The x terms should cancel","The result should be x²","There is no mistake"], a:0, hint:"Like terms add their coefficients.", exp:"3x + 4x = 7x."},
+  {q:"Solve: x + 9 = 20", choices:["x = 11","x = 29","x = -11","x = 9"], a:0, hint:"Subtract 9 from both sides.", exp:"x = 11."},
+  {q:"Simplify: 10x - 6x + 2", choices:["4x + 2","16x + 2","4x","6x + 2"], a:0, hint:"Subtract the x-coefficients only.", exp:"10x - 6x = 4x, so the result is 4x + 2."}
 ];
 
-// ---------- GAME ----------
-const questions = shuffle(bank);
-let i=0, correct=0, attempts=0, activeInput=null;
+let questions = shuffle(bank);
+let current=0;
+let correct=0;
+let attempts=0;
 
-const app=document.getElementById('app');
+function startGame(){
+  const name=document.getElementById('studentName').value.trim();
+  if(!name) return;
 
-function render(){
-  const q=questions[i];
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('gameScreen').style.display='block';
 
-  if(!q){
-    app.innerHTML=`<h2>Complete!</h2>
-    Accuracy: ${Math.round(correct/attempts*100)}%`;
-    return;
-  }
+  document.getElementById('nameDisplay').textContent=name;
+  document.getElementById('startTime').textContent=new Date().toLocaleTimeString();
 
-  let html=`<div class="panel">
-  <h2>Question ${i+1}/30</h2>
-  <div>${q.q}</div>`;
-
-  if(q.type==='mc'){
-    const choices=shuffle(q.choices.map((c,idx)=>({c,idx})));
-    q._choices=choices;
-
-    html+=choices.map(c=>`
-    <label class="choice">
-    <input type="radio" name="c" value="${c.idx}">
-    ${c.c}
-    </label>`).join('');
-
-    html+=`<button id="submit">Submit</button>`;
-  }
-
-  if(q.type==='input'){
-    html+=`
-    <input id="input">
-    <div id="calc"></div>
-    <button id="submit">Submit</button>`;
-  }
-
-  html+=`<div id="feedback"></div></div>`;
-  app.innerHTML=html;
-
-  if(q.type==='input'){
-    activeInput=document.getElementById('input');
-    document.getElementById('calc')
-      .appendChild(createCalc(()=>activeInput));
-  }
-
-  document.getElementById('submit').onclick=check;
+  startTimer();
+  loadQuestion();
 }
 
-function check(){
-  const q=questions[i];
+function loadQuestion(){
+  const q=questions[current];
+  document.getElementById('questionText').innerHTML=q.q;
+
+  const shuffled = shuffle(q.choices.map((c,i)=>({c,i})));
+  q._map = shuffled;
+
+  document.getElementById('choices').innerHTML = shuffled.map(c=>`
+    <label class="choice">
+      <input type="radio" name="c" value="${c.i}">
+      ${c.c}
+    </label>
+  `).join('');
+
+  document.getElementById('progress').textContent = (current+1)+"/30";
+  document.getElementById('accuracy').textContent =
+    attempts ? Math.round((correct/attempts)*100)+"%" : "0%";
+
+  document.getElementById('feedback').innerHTML="";
+}
+
+function submitAnswer(){
+  const q=questions[current];
+  const sel=document.querySelector('input[name="c"]:checked');
+  if(!sel) return;
+
   attempts++;
-  let ok=false;
-
-  if(q.type==='mc'){
-    const sel=document.querySelector('input[name="c"]:checked');
-    if(!sel) return;
-    ok=Number(sel.value)===q.a;
-  }
-
-  if(q.type==='input'){
-    ok=q.a.some(a=>norm(a)===norm(activeInput.value));
-  }
-
+  const isCorrect = Number(sel.value)===q.a;
   const fb=document.getElementById('feedback');
 
-  if(ok){
+  if(isCorrect){
     correct++;
-    fb.innerHTML="Correct! "+q.exp;
-    setTimeout(()=>{i++;render();},1500);
+    fb.innerHTML = `<span class="good">Correct!</span> ${q.exp}`;
+
+    setTimeout(()=>{
+      current++;
+      if(current>=30){
+        endGame();
+      }else{
+        loadQuestion();
+      }
+    },1800);
+
   }else{
-    fb.innerHTML="Try again: "+q.exp;
+    fb.innerHTML = `<span class="bad">Try again:</span> ${q.hint}`;
   }
 }
 
-render();
+function endGame(){
+  clearInterval(timerInterval);
+
+  document.getElementById('gameScreen').innerHTML = `
+    <div class="panel">
+      <h2>Complete</h2>
+      <p>Accuracy: ${Math.round((correct/attempts)*100)}%</p>
+    </div>
+  `;
+}
 </script>
 
 </body>
