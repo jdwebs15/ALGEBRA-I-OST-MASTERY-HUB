@@ -3,12 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Exponential Growth & Decay — Algebra I OST Mastery</title>
+<title>Exponential Growth & Decay — OST Mastery</title>
 <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
 
-<div class="wrap" id="app"></div>
+<div class="wrap">
+
+<!-- START SCREEN -->
+<div id="startScreen" class="panel">
+  <h2>Exponential Growth & Decay</h2>
+  <p>Enter your name to begin</p>
+  <input id="studentName" class="answer-box" placeholder="Your name">
+  <br><br>
+  <button class="btn" onclick="startGame()">Start</button>
+</div>
+
+<!-- GAME -->
+<div id="gameScreen" style="display:none">
+
+  <!-- HEADER -->
+  <div class="panel hud">
+    <div><b id="nameDisplay"></b></div>
+    <div>Q: <span id="progress">1/30</span></div>
+    <div>Score: <span id="accuracy">0%</span></div>
+    <div>Time: <span id="timer">0:00</span></div>
+    <div>Started: <span id="startTime"></span></div>
+  </div>
+
+  <!-- QUESTION -->
+  <div class="panel">
+    <div id="questionText"></div>
+    <div id="choices"></div>
+    <button class="btn" onclick="submitAnswer()">Submit</button>
+    <div id="feedback"></div>
+  </div>
+
+</div>
+
+</div>
 
 <script>
 // ---------- UTIL ----------
@@ -21,369 +54,143 @@ function shuffle(a){
   return arr;
 }
 
-function norm(s){
-  return String(s).replace(/\s+/g,'').toLowerCase();
+// ---------- TIMER ----------
+let seconds=0;
+let timerInterval;
+
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const m=Math.floor(seconds/60);
+    const s=seconds%60;
+    document.getElementById('timer').textContent =
+      m+":"+(s<10?"0":"")+s;
+  },1000);
 }
 
-// ---------- CALCULATOR ----------
-function createCalculator(inputRef){
-  const wrap=document.createElement('div');
-  wrap.className='calc';
-
-  const keys=[
-    '7','8','9','4','5','6','1','2','3','0','.','⌫',
-    '+','-','*','/','(',')','clear'
-  ];
-
-  keys.forEach(k=>{
-    const b=document.createElement('button');
-    b.className='kbtn';
-    b.textContent=k;
-    b.onclick=()=>{
-      const el=inputRef();
-      if(!el)return;
-
-      if(k==='⌫'){
-        el.value=el.value.slice(0,-1);
-        return;
-      }
-      if(k==='clear'){
-        el.value='';
-        return;
-      }
-      el.value+=k;
-    };
-    wrap.appendChild(b);
-  });
-
-  return wrap;
-}
-
-// ---------- QUESTION BANK (30) ----------
+// ---------- QUESTIONS (30) ----------
 const bank = [
 
-{type:'mc',
-q:`Which situation represents exponential growth?`,
-choices:[
-"A savings account earning 5% interest each year",
-"Adding $100 each year",
-"A car losing $500 value yearly",
-"A line increasing at a constant rate"
-],
-a:0,
-exp:"Growth by a constant percent = exponential."
-},
-
-{type:'mc',
-q:`Which represents exponential decay?`,
-choices:[
-"y = 2x + 5",
-"y = 0.8x",
-"y = 5(0.5)^x",
-"y = x²"
-],
-a:2,
-exp:"Base less than 1 = decay."
-},
-
-{type:'input',
-q:`Evaluate: 3(2)^2`,
-a:['12'],
-exp:"3 × 4 = 12"
-},
-
-{type:'input',
-q:`Evaluate: 5(0.5)^2`,
-a:['1.25'],
-exp:"5 × 0.25 = 1.25"
-},
-
-{type:'mc',
-q:`In y = 4(3)^x, what is the growth factor?`,
-choices:["4","3","x","1"],
-a:1,
-exp:"Base = 3"
-},
-
-{type:'mc',
-q:`In y = 6(0.2)^x, the function is`,
-choices:[
-"Linear",
-"Exponential growth",
-"Exponential decay",
-"Quadratic"
-],
-a:2,
-exp:"Base < 1 = decay"
-},
-
-{type:'input',
-q:`Evaluate: 2(3)^3`,
-a:['54'],
-exp:"2 × 27 = 54"
-},
-
-{type:'mc',
-q:`Which graph would show exponential growth?`,
-choices:[
-"Curve increasing faster over time",
-"Straight line",
-"Curve decreasing",
-"Horizontal line"
-],
-a:0,
-exp:"Growth curves upward faster."
-},
-
-{type:'input',
-q:`Evaluate: 10(0.1)^2`,
-a:['0.1'],
-exp:"10 × 0.01 = 0.1"
-},
-
-{type:'mc',
-q:`If a population doubles each year, what is the growth factor?`,
-choices:["2","1","0.5","10"],
-a:0,
-exp:"Doubling = factor of 2"
-},
-
-{type:'input',
-q:`Evaluate: 4(2)^4`,
-a:['64'],
-exp:"4 × 16 = 64"
-},
-
-{type:'mc',
-q:`Which equation shows decay?`,
-choices:[
-"y = 5(1.2)^x",
-"y = 3(0.7)^x",
-"y = 2x + 4",
-"y = x²"
-],
-a:1,
-exp:"0.7 < 1 → decay"
-},
-
-{type:'input',
-q:`Evaluate: 6(0.5)^3`,
-a:['0.75'],
-exp:"6 × 0.125 = 0.75"
-},
-
-{type:'mc',
-q:`What happens in exponential growth?`,
-choices:[
-"Increases by constant percent",
-"Increases by constant amount",
-"Decreases linearly",
-"Stays constant"
-],
-a:0,
-exp:"Key feature = percent change"
-},
-
-{type:'input',
-q:`Evaluate: 8(2)^3`,
-a:['64'],
-exp:"8 × 8 = 64"
-},
-
-{type:'mc',
-q:`Which base represents fastest growth?`,
-choices:["1.1","2","3","0.5"],
-a:2,
-exp:"Larger base = faster growth"
-},
-
-{type:'input',
-q:`Evaluate: 3(4)^2`,
-a:['48'],
-exp:"3 × 16 = 48"
-},
-
-{type:'mc',
-q:`Which base represents fastest decay?`,
-choices:["0.9","0.5","0.8","1.2"],
-a:1,
-exp:"Smaller base → faster decay"
-},
-
-{type:'input',
-q:`Evaluate: 2(5)^2`,
-a:['50'],
-exp:"2 × 25 = 50"
-},
-
-{type:'mc',
-q:`In y = 7(2)^x, what is the initial value?`,
-choices:["7","2","x","14"],
-a:0,
-exp:"Initial = coefficient"
-},
-
-{type:'input',
-q:`Evaluate: 9(0.5)^2`,
-a:['2.25'],
-exp:"9 × 0.25 = 2.25"
-},
-
-{type:'mc',
-q:`Which equation grows slowest?`,
-choices:["y=2(1.1)^x","y=2(3)^x","y=2(5)^x","y=2(10)^x"],
-a:0,
-exp:"Smallest base grows slowest"
-},
-
-{type:'input',
-q:`Evaluate: 5(3)^2`,
-a:['45'],
-exp:"5 × 9 = 45"
-},
-
-{type:'mc',
-q:`Which graph shows decay?`,
-choices:[
-"Curve downward flattening",
-"Line increasing",
-"Line decreasing",
-"Parabola"
-],
-a:0,
-exp:"Decay curves downward"
-},
-
-{type:'input',
-q:`Evaluate: 4(0.5)^4`,
-a:['0.25'],
-exp:"4 × 0.0625 = 0.25"
-},
-
-{type:'mc',
-q:`If bacteria triples, the factor is`,
-choices:["2","3","1","0.3"],
-a:1,
-exp:"Triples = 3"
-},
-
-{type:'input',
-q:`Evaluate: 7(2)^2`,
-a:['28'],
-exp:"7 × 4 = 28"
-},
-
-{type:'mc',
-q:`Which is NOT exponential?`,
-choices:[
-"y = 2(3)^x",
-"y = 5(0.5)^x",
-"y = 2x + 3",
-"y = 4(1.1)^x"
-],
-a:2,
-exp:"Linear function"
-},
-
-{type:'input',
-q:`Evaluate: 6(3)^2`,
-a:['54'],
-exp:"6 × 9 = 54"
-},
-
-{type:'mc',
-q:`Which best describes exponential decay?`,
-choices:[
-"Decreases by percent",
-"Decreases by constant amount",
-"Increases rapidly",
-"Stays same"
-],
-a:0,
-exp:"Decay = percent decrease"
-}
+{q:"Evaluate: 2³", choices:["8","6","9","4"], a:0, hint:"Multiply 2×2×2", exp:"2×2×2 = 8"},
+{q:"Evaluate: 5²", choices:["25","10","20","15"], a:0, hint:"Square means multiply twice", exp:"5×5 = 25"},
+{q:"Evaluate: 3⁴", choices:["81","27","64","12"], a:0, hint:"Multiply 3 four times", exp:"3×3×3×3 = 81"},
+{q:"Evaluate: 10³", choices:["1000","100","30","300"], a:0, hint:"10×10×10", exp:"=1000"},
+{q:"Which is exponential growth?", choices:["y=2(1.5)^x","y=2(0.5)^x","y=2x+3","y=x²"], a:0, hint:"Growth has base >1", exp:"1.5 > 1 so growth"},
+{q:"Which is decay?", choices:["y=3(0.5)^x","y=3(2)^x","y=3x","y=x²"], a:0, hint:"Decay base <1", exp:"0.5 < 1"},
+{q:"Evaluate: 4²", choices:["16","8","12","6"], a:0, hint:"Square it", exp:"4×4=16"},
+{q:"Evaluate: 2⁵", choices:["32","16","64","10"], a:0, hint:"Multiply 2 five times", exp:"32"},
+{q:"Evaluate: 3³", choices:["27","9","18","6"], a:0, hint:"3×3×3", exp:"27"},
+{q:"Which grows faster?", choices:["y=2^x","y=1.1^x","y=x","y=x²"], a:0, hint:"Larger base grows faster", exp:"2^x grows faster"},
+{q:"Evaluate: 6²", choices:["36","12","18","30"], a:0, hint:"6×6", exp:"36"},
+{q:"Evaluate: 7²", choices:["49","14","21","35"], a:0, hint:"7×7", exp:"49"},
+{q:"Evaluate: 2⁴", choices:["16","8","12","10"], a:0, hint:"2×2×2×2", exp:"16"},
+{q:"Which is decay?", choices:["(0.8)^x","(2)^x","x²","x+3"], a:0, hint:"Base <1", exp:"0.8 is decay"},
+{q:"Evaluate: 9²", choices:["81","18","27","72"], a:0, hint:"9×9", exp:"81"},
+{q:"Evaluate: 8²", choices:["64","16","32","48"], a:0, hint:"8×8", exp:"64"},
+{q:"Evaluate: 2⁶", choices:["64","32","128","16"], a:0, hint:"2×2×2×2×2×2", exp:"64"},
+{q:"Evaluate: 3²", choices:["9","6","12","3"], a:0, hint:"3×3", exp:"9"},
+{q:"Which grows faster?", choices:["3^x","2^x","x²","x"], a:0, hint:"Larger base", exp:"3^x"},
+{q:"Evaluate: 5³", choices:["125","25","50","75"], a:0, hint:"5×5×5", exp:"125"},
+{q:"Evaluate: 10²", choices:["100","20","200","10"], a:0, hint:"10×10", exp:"100"},
+{q:"Evaluate: 2³", choices:["8","6","4","2"], a:0, hint:"Multiply 3 times", exp:"8"},
+{q:"Which is growth?", choices:["(1.2)^x","(0.9)^x","x²","x"], a:0, hint:"Base >1", exp:"1.2 growth"},
+{q:"Evaluate: 4³", choices:["64","16","12","48"], a:0, hint:"4×4×4", exp:"64"},
+{q:"Evaluate: 6³", choices:["216","36","108","72"], a:0, hint:"6×6×6", exp:"216"},
+{q:"Evaluate: 3⁵", choices:["243","81","125","60"], a:0, hint:"Multiply 5 times", exp:"243"},
+{q:"Evaluate: 2⁷", choices:["128","64","256","32"], a:0, hint:"Double repeatedly", exp:"128"},
+{q:"Which decays fastest?", choices:["(0.2)^x","(0.8)^x","(1.2)^x","x²"], a:0, hint:"Smaller base decays faster", exp:"0.2"},
+{q:"Evaluate: 7³", choices:["343","49","21","147"], a:0, hint:"7×7×7", exp:"343"},
+{q:"Evaluate: 9³", choices:["729","81","243","90"], a:0, hint:"Multiply 9 three times", exp:"729"}
 
 ];
 
 // ---------- GAME STATE ----------
-const questions = shuffle(bank).slice(0,30);
-let i=0, correct=0, attempts=0;
-let activeInput=null;
+let questions = shuffle(bank);
+let current=0;
+let correct=0;
+let attempts=0;
+let selected=null;
 
-// ---------- UI ----------
-const app=document.getElementById('app');
+// ---------- START ----------
+function startGame(){
+  const name=document.getElementById('studentName').value.trim();
+  if(!name) return;
 
-function render(){
-  const q=questions[i];
-  if(!q){
-    app.innerHTML=`<h2>Complete!</h2>
-    Accuracy: ${Math.round(correct/attempts*100)}%`;
-    return;
-  }
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('gameScreen').style.display='block';
 
-  let html=`<div class="panel">
-  <h2>Question ${i+1}/30</h2>
-  <div>${q.q}</div>`;
+  document.getElementById('nameDisplay').textContent=name;
+  document.getElementById('startTime').textContent=new Date().toLocaleTimeString();
 
-  if(q.type==='mc'){
-    const choices=shuffle(q.choices.map((c,idx)=>({c,idx})));
-    q._choices=choices;
-
-    html+=choices.map(ch=>`
-    <label class="choice">
-    <input type="radio" name="c" value="${ch.idx}">
-    ${ch.c}
-    </label>`).join('');
-
-    html+=`<button id="submit">Submit</button>`;
-  }
-
-  if(q.type==='input'){
-    html+=`
-    <input id="input">
-    <div id="calc"></div>
-    <button id="submit">Submit</button>`;
-  }
-
-  html+=`<div id="feedback"></div></div>`;
-  app.innerHTML=html;
-
-  if(q.type==='input'){
-    activeInput=document.getElementById('input');
-    document.getElementById('calc')
-      .appendChild(createCalculator(()=>activeInput));
-  }
-
-  document.getElementById('submit').onclick=check;
+  startTimer();
+  loadQuestion();
 }
 
-function check(){
-  const q=questions[i];
+// ---------- LOAD ----------
+function loadQuestion(){
+  selected=null;
+
+  const q=questions[current];
+  document.getElementById('questionText').innerHTML=q.q;
+
+  const shuffled = shuffle(q.choices.map((c,i)=>({c,i})));
+  q._map = shuffled;
+
+  document.getElementById('choices').innerHTML = shuffled.map(c=>`
+    <label class="choice">
+      <input type="radio" name="c" value="${c.i}">
+      ${c.c}
+    </label>
+  `).join('');
+
+  document.getElementById('progress').textContent = (current+1)+"/30";
+  document.getElementById('accuracy').textContent =
+    attempts ? Math.round((correct/attempts)*100)+"%" : "0%";
+
+  document.getElementById('feedback').innerHTML="";
+}
+
+// ---------- SUBMIT ----------
+function submitAnswer(){
+  const q=questions[current];
+  const sel=document.querySelector('input[name="c"]:checked');
+  if(!sel) return;
+
   attempts++;
-  let ok=false;
 
-  if(q.type==='mc'){
-    const sel=document.querySelector('input[name="c"]:checked');
-    if(!sel) return;
-    ok=Number(sel.value)===q.a;
-  }
-
-  if(q.type==='input'){
-    ok=q.a.some(a=>norm(a)===norm(activeInput.value));
-  }
-
+  const isCorrect = Number(sel.value)===q.a;
   const fb=document.getElementById('feedback');
 
-  if(ok){
+  if(isCorrect){
     correct++;
-    fb.innerHTML="Correct! "+q.exp;
-    setTimeout(()=>{i++;render();},1500);
+    fb.innerHTML = `<span class="good">Correct!</span> ${q.exp}`;
+
+    setTimeout(()=>{
+      current++;
+      if(current>=30){
+        endGame();
+      }else{
+        loadQuestion();
+      }
+    },1800);
+
   }else{
-    fb.innerHTML="Try again: "+q.exp;
+    fb.innerHTML = `<span class="bad">Try again:</span> ${q.hint}`;
   }
 }
 
-render();
+// ---------- END ----------
+function endGame(){
+  clearInterval(timerInterval);
+
+  document.getElementById('gameScreen').innerHTML = `
+    <div class="panel">
+      <h2>Complete</h2>
+      <p>Accuracy: ${Math.round((correct/attempts)*100)}%</p>
+    </div>
+  `;
+}
+
 </script>
 
 </body>
