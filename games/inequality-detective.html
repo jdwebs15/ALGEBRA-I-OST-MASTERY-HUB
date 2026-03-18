@@ -1,178 +1,269 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inequality Detective — OST Mastery</title>
-<link rel="stylesheet" href="../styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inequality Detective — Algebra I OST Mastery Hub</title>
+  <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
-
-<div class="wrap">
-
-  <div id="startScreen" class="panel">
-    <h2>Inequality Detective</h2>
-    <p>Enter your name to begin</p>
-    <input id="studentName" class="answer-box" placeholder="Your name">
-    <br><br>
-    <button class="btn" onclick="startGame()">Start</button>
-  </div>
-
-  <div id="gameScreen" style="display:none">
-
-    <div class="panel hud">
-      <div><b id="nameDisplay"></b></div>
-      <div>Q: <span id="progress">1/30</span></div>
-      <div>Score: <span id="accuracy">0%</span></div>
-      <div>Time: <span id="timer">0:00</span></div>
-      <div>Started: <span id="startTime"></span></div>
-    </div>
-
-    <div class="panel">
-      <div id="questionText"></div>
-      <div id="choices"></div>
-      <button class="btn" onclick="submitAnswer()">Submit</button>
-      <div id="feedback"></div>
-    </div>
-
-  </div>
-
-</div>
+  <div class="wrap" id="app"></div>
 
 <script>
-function shuffle(a){
-  const arr=[...a];
-  for(let i=arr.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]]=[arr[j],arr[i]];
+function shuffle(arr){
+  const a = [...arr];
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  return arr;
+  return a;
 }
 
-let seconds=0;
-let timerInterval;
-
-function startTimer(){
-  timerInterval=setInterval(()=>{
-    seconds++;
-    const m=Math.floor(seconds/60);
-    const s=seconds%60;
-    document.getElementById('timer').textContent =
-      m + ":" + (s<10?"0":"") + s;
-  },1000);
+function formatTime(s){
+  const m = Math.floor(s / 60).toString().padStart(2,'0');
+  const sec = (s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
 }
 
-const bank = [
-  {q:"Solve: x + 3 > 7", choices:["x > 4","x < 4","x ≥ 4","x ≤ 4"], a:0, hint:"Subtract 3 from both sides.", exp:"x > 4"},
-  {q:"Solve: x - 5 < 2", choices:["x < 7","x > 7","x ≤ 7","x ≥ 7"], a:0, hint:"Add 5 to both sides.", exp:"x < 7"},
-  {q:"Solve: 2x > 10", choices:["x > 5","x < 5","x ≥ 5","x ≤ 5"], a:0, hint:"Divide both sides by 2.", exp:"x > 5"},
-  {q:"Solve: 3x ≤ 12", choices:["x ≤ 4","x < 4","x ≥ 4","x > 4"], a:0, hint:"Divide by 3.", exp:"x ≤ 4"},
-  {q:"Solve: x + 8 ≥ 15", choices:["x ≥ 7","x > 7","x ≤ 7","x < 7"], a:0, hint:"Subtract 8.", exp:"x ≥ 7"},
-  {q:"Solve: x - 4 ≥ 9", choices:["x ≥ 13","x > 13","x ≤ 13","x < 13"], a:0, hint:"Add 4.", exp:"x ≥ 13"},
-  {q:"Solve: 5x < 25", choices:["x < 5","x > 5","x ≤ 5","x ≥ 5"], a:0, hint:"Divide by 5.", exp:"x < 5"},
-  {q:"Solve: 4x ≥ 20", choices:["x ≥ 5","x > 5","x ≤ 5","x < 5"], a:0, hint:"Divide by 4.", exp:"x ≥ 5"},
-  {q:"Solve: -x > 6", choices:["x < -6","x > -6","x ≤ -6","x ≥ -6"], a:0, hint:"Multiply by -1 and flip the sign.", exp:"x < -6"},
-  {q:"Solve: -x < 2", choices:["x > -2","x < -2","x ≥ -2","x ≤ -2"], a:0, hint:"Flip the inequality when multiplying by -1.", exp:"x > -2"},
-  {q:"Solve: -2x > 8", choices:["x < -4","x > -4","x ≤ -4","x ≥ -4"], a:0, hint:"Divide by -2 and flip the sign.", exp:"x < -4"},
-  {q:"Solve: -3x ≤ 12", choices:["x ≥ -4","x ≤ -4","x > -4","x < -4"], a:0, hint:"Divide by -3 and reverse the inequality.", exp:"x ≥ -4"},
-  {q:"Solve: x/2 > 6", choices:["x > 12","x < 12","x ≥ 12","x ≤ 12"], a:0, hint:"Multiply both sides by 2.", exp:"x > 12"},
-  {q:"Solve: x/4 ≤ 3", choices:["x ≤ 12","x < 12","x ≥ 12","x > 12"], a:0, hint:"Multiply by 4.", exp:"x ≤ 12"},
-  {q:"Solve: 2x + 3 > 11", choices:["x > 4","x < 4","x ≥ 4","x ≤ 4"], a:0, hint:"Subtract 3, then divide by 2.", exp:"x > 4"},
-  {q:"Solve: 3x - 6 < 9", choices:["x < 5","x > 5","x ≤ 5","x ≥ 5"], a:0, hint:"Add 6, then divide by 3.", exp:"x < 5"},
-  {q:"Solve: 4x + 8 ≥ 24", choices:["x ≥ 4","x > 4","x ≤ 4","x < 4"], a:0, hint:"Subtract 8, then divide by 4.", exp:"x ≥ 4"},
-  {q:"Solve: 5x - 10 ≤ 15", choices:["x ≤ 5","x < 5","x ≥ 5","x > 5"], a:0, hint:"Add 10, then divide by 5.", exp:"x ≤ 5"},
-  {q:"Solve: -2x + 4 > 10", choices:["x < -3","x > -3","x ≤ -3","x ≥ -3"], a:0, hint:"Subtract 4, divide by -2, flip sign.", exp:"x < -3"},
-  {q:"Solve: -3x - 6 ≤ 9", choices:["x ≥ -5","x ≤ -5","x > -5","x < -5"], a:0, hint:"Add 6, divide by -3, reverse inequality.", exp:"x ≥ -5"},
-  {q:"Which statement is true when dividing an inequality by a negative number?", choices:["Flip the inequality sign","Keep the sign the same","Add 1 to both sides","Square both sides"], a:0, hint:"Negative division changes direction.", exp:"You flip the inequality sign."},
-  {q:"Which solution matches x ≥ 3?", choices:["All numbers 3 and greater","All numbers greater than 3 only","All numbers less than 3","All numbers less than or equal to 3"], a:0, hint:"The line under the sign means include 3.", exp:"x ≥ 3 means 3 and anything larger."},
-  {q:"Which solution matches x < -2?", choices:["All numbers less than -2","All numbers greater than -2","All numbers less than or equal to -2","All numbers greater than or equal to -2"], a:0, hint:"Strictly less than does not include -2.", exp:"x < -2 means values to the left of -2."},
-  {q:"Solve: 6 + x > 1", choices:["x > -5","x < -5","x ≥ -5","x ≤ -5"], a:0, hint:"Subtract 6.", exp:"x > -5"},
-  {q:"Solve: 9 - x ≤ 4", choices:["x ≥ 5","x ≤ 5","x > 5","x < 5"], a:0, hint:"Subtract 9, then multiply by -1 and flip.", exp:"x ≥ 5"},
-  {q:"Solve: 7x + 14 < 0", choices:["x < -2","x > -2","x ≤ -2","x ≥ -2"], a:0, hint:"Subtract 14, then divide by 7.", exp:"x < -2"},
-  {q:"Solve: 8 - 2x > 0", choices:["x < 4","x > 4","x ≤ 4","x ≥ 4"], a:0, hint:"Subtract 8, divide by -2, flip sign.", exp:"x < 4"},
-  {q:"Solve: 2(x + 3) ≤ 14", choices:["x ≤ 4","x < 4","x ≥ 4","x > 4"], a:0, hint:"Distribute first or divide by 2 first.", exp:"2x + 6 ≤ 14 → 2x ≤ 8 → x ≤ 4"},
-  {q:"Solve: 3(x - 1) > 12", choices:["x > 5","x < 5","x ≥ 5","x ≤ 5"], a:0, hint:"Distribute and solve.", exp:"3x - 3 > 12 → 3x > 15 → x > 5"},
-  {q:"Solve: -4(x + 2) ≥ 8", choices:["x ≤ -4","x ≥ -4","x < -4","x > -4"], a:0, hint:"Distribute, then divide by -4 and reverse the sign.", exp:"-4x - 8 ≥ 8 → -4x ≥ 16 → x ≤ -4"}
-];
-
-let questions = shuffle(bank);
-let current=0;
-let correct=0;
-let attempts=0;
-
-function startGame(){
-  const name=document.getElementById('studentName').value.trim();
-  if(!name) return;
-
-  document.getElementById('startScreen').style.display='none';
-  document.getElementById('gameScreen').style.display='block';
-
-  document.getElementById('nameDisplay').textContent=name;
-  document.getElementById('startTime').textContent=new Date().toLocaleTimeString();
-
-  startTimer();
-  loadQuestion();
+function startTimer(el){
+  let sec = 0;
+  el.textContent = '00:00';
+  return setInterval(() => {
+    sec++;
+    el.textContent = formatTime(sec);
+  }, 1000);
 }
 
-function loadQuestion(){
-  const q=questions[current];
-  document.getElementById('questionText').innerHTML=q.q;
-
-  const shuffled = shuffle(q.choices.map((c,i)=>({c,i})));
-  q._map = shuffled;
-
-  document.getElementById('choices').innerHTML = shuffled.map(c=>`
-    <label class="choice">
-      <input type="radio" name="c" value="${c.i}">
-      ${c.c}
-    </label>
-  `).join('');
-
-  document.getElementById('progress').textContent = (current+1)+"/30";
-  document.getElementById('accuracy').textContent =
-    attempts ? Math.round((correct/attempts)*100)+"%" : "0%";
-
-  document.getElementById('feedback').innerHTML="";
+function calcAccuracy(correct,total){
+  return total ? Math.round((correct / total) * 100) : 0;
 }
 
-function submitAnswer(){
-  const q=questions[current];
-  const sel=document.querySelector('input[name="c"]:checked');
-  if(!sel) return;
-
-  attempts++;
-  const isCorrect = Number(sel.value)===q.a;
-  const fb=document.getElementById('feedback');
-
-  if(isCorrect){
-    correct++;
-    fb.innerHTML = `<span class="good">Correct!</span> ${q.exp}`;
-
-    setTimeout(()=>{
-      current++;
-      if(current>=30){
-        endGame();
-      }else{
-        loadQuestion();
-      }
-    },1800);
-
-  }else{
-    fb.innerHTML = `<span class="bad">Try again:</span> ${q.hint}`;
-  }
-}
-
-function endGame(){
-  clearInterval(timerInterval);
-
-  document.getElementById('gameScreen').innerHTML = `
-    <div class="panel">
-      <h2>Complete</h2>
-      <p>Accuracy: ${Math.round((correct/attempts)*100)}%</p>
+function buildHeader(title, sub){
+  return `
+    <div class="panel header">
+      <div class="brand">
+        <div class="brand-badge">≤</div>
+        <div>
+          <h1>${title}</h1>
+          <div class="sub">${sub}</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <div class="pill">Student: <span id="studentNameOut">Guest</span></div>
+        <div class="pill">Progress: <span id="progressOut">0/0</span></div>
+        <div class="pill">Accuracy: <span id="accuracyOut">0%</span></div>
+        <div class="pill">Timer: <span id="timerOut">00:00</span></div>
+        <div class="pill">Started: <span id="startedOut">—</span></div>
+      </div>
     </div>
   `;
 }
-</script>
 
+function todayStamp(){
+  return new Date().toLocaleString();
+}
+
+const questionBank = [
+  {type:'mc', prompt:'Solve: x + 3 > 7', choices:['x > 4','x < 4','x ≥ 4','x ≤ 4'], answer:0, hint:'Subtract 3 from both sides.', explanation:'Subtracting 3 gives x > 4.'},
+  {type:'mc', prompt:'Solve: x - 5 < 2', choices:['x < 7','x > 7','x ≤ 7','x ≥ 7'], answer:0, hint:'Add 5 to both sides.', explanation:'Adding 5 gives x < 7.'},
+  {type:'mc', prompt:'Solve: 2x > 10', choices:['x > 5','x < 5','x ≥ 5','x ≤ 5'], answer:0, hint:'Divide both sides by 2.', explanation:'Dividing by 2 gives x > 5.'},
+  {type:'mc', prompt:'Solve: 3x ≤ 12', choices:['x ≤ 4','x < 4','x ≥ 4','x > 4'], answer:0, hint:'Divide by 3.', explanation:'Dividing by 3 gives x ≤ 4.'},
+  {type:'mc', prompt:'Solve: x + 8 ≥ 15', choices:['x ≥ 7','x > 7','x ≤ 7','x < 7'], answer:0, hint:'Subtract 8.', explanation:'Subtracting 8 gives x ≥ 7.'},
+  {type:'mc', prompt:'Solve: x - 4 ≥ 9', choices:['x ≥ 13','x > 13','x ≤ 13','x < 13'], answer:0, hint:'Add 4.', explanation:'Adding 4 gives x ≥ 13.'},
+  {type:'mc', prompt:'Solve: 5x < 25', choices:['x < 5','x > 5','x ≤ 5','x ≥ 5'], answer:0, hint:'Divide by 5.', explanation:'Dividing by 5 gives x < 5.'},
+  {type:'mc', prompt:'Solve: 4x ≥ 20', choices:['x ≥ 5','x > 5','x ≤ 5','x < 5'], answer:0, hint:'Divide by 4.', explanation:'Dividing by 4 gives x ≥ 5.'},
+  {type:'mc', prompt:'Solve: -x > 6', choices:['x < -6','x > -6','x ≤ -6','x ≥ -6'], answer:0, hint:'Multiply by -1 and reverse the sign.', explanation:'Multiplying by -1 gives x < -6.'},
+  {type:'mc', prompt:'Solve: -x < 2', choices:['x > -2','x < -2','x ≥ -2','x ≤ -2'], answer:0, hint:'Multiply by -1 and reverse the sign.', explanation:'Multiplying by -1 gives x > -2.'},
+  {type:'mc', prompt:'Solve: -2x > 8', choices:['x < -4','x > -4','x ≤ -4','x ≥ -4'], answer:0, hint:'Divide by -2 and reverse the sign.', explanation:'Dividing by -2 gives x < -4.'},
+  {type:'mc', prompt:'Solve: -3x ≤ 12', choices:['x ≥ -4','x ≤ -4','x > -4','x < -4'], answer:0, hint:'Divide by -3 and reverse the sign.', explanation:'Dividing by -3 gives x ≥ -4.'},
+  {type:'mc', prompt:'Solve: x/2 > 6', choices:['x > 12','x < 12','x ≥ 12','x ≤ 12'], answer:0, hint:'Multiply both sides by 2.', explanation:'Multiplying by 2 gives x > 12.'},
+  {type:'mc', prompt:'Solve: x/4 ≤ 3', choices:['x ≤ 12','x < 12','x ≥ 12','x > 12'], answer:0, hint:'Multiply by 4.', explanation:'Multiplying by 4 gives x ≤ 12.'},
+  {type:'mc', prompt:'Solve: 2x + 3 > 11', choices:['x > 4','x < 4','x ≥ 4','x ≤ 4'], answer:0, hint:'Subtract 3, then divide by 2.', explanation:'2x > 8, so x > 4.'},
+  {type:'mc', prompt:'Solve: 3x - 6 < 9', choices:['x < 5','x > 5','x ≤ 5','x ≥ 5'], answer:0, hint:'Add 6, then divide by 3.', explanation:'3x < 15, so x < 5.'},
+  {type:'mc', prompt:'Solve: 4x + 8 ≥ 24', choices:['x ≥ 4','x > 4','x ≤ 4','x < 4'], answer:0, hint:'Subtract 8, then divide by 4.', explanation:'4x ≥ 16, so x ≥ 4.'},
+  {type:'mc', prompt:'Solve: 5x - 10 ≤ 15', choices:['x ≤ 5','x < 5','x ≥ 5','x > 5'], answer:0, hint:'Add 10, then divide by 5.', explanation:'5x ≤ 25, so x ≤ 5.'},
+  {type:'mc', prompt:'Solve: -2x + 4 > 10', choices:['x < -3','x > -3','x ≤ -3','x ≥ -3'], answer:0, hint:'Subtract 4, then divide by -2 and reverse the sign.', explanation:'-2x > 6, so x < -3.'},
+  {type:'mc', prompt:'Solve: -3x - 6 ≤ 9', choices:['x ≥ -5','x ≤ -5','x > -5','x < -5'], answer:0, hint:'Add 6, then divide by -3 and reverse the sign.', explanation:'-3x ≤ 15, so x ≥ -5.'},
+  {type:'mc', prompt:'When dividing an inequality by a negative number, you must', choices:['reverse the inequality sign','keep the inequality sign the same','add 1 to both sides','square both sides'], answer:0, hint:'Negative operations reverse direction.', explanation:'Dividing or multiplying by a negative reverses the inequality sign.'},
+  {type:'mc', prompt:'Which statement matches x ≥ 3?', choices:['All numbers 3 and greater','All numbers greater than 3 only','All numbers less than 3','All numbers 3 and less'], answer:0, hint:'The line under the symbol means include 3.', explanation:'x ≥ 3 includes 3 and all greater numbers.'},
+  {type:'mc', prompt:'Which statement matches x < -2?', choices:['All numbers less than -2','All numbers greater than -2','All numbers less than or equal to -2','All numbers greater than or equal to -2'], answer:0, hint:'Strictly less than does not include -2.', explanation:'x < -2 means all values less than -2.'},
+  {type:'mc', prompt:'Solve: 6 + x > 1', choices:['x > -5','x < -5','x ≥ -5','x ≤ -5'], answer:0, hint:'Subtract 6.', explanation:'Subtracting 6 gives x > -5.'},
+  {type:'mc', prompt:'Solve: 9 - x ≤ 4', choices:['x ≥ 5','x ≤ 5','x > 5','x < 5'], answer:0, hint:'Subtract 9, then multiply by -1 and reverse the sign.', explanation:'-x ≤ -5, so x ≥ 5.'},
+  {type:'mc', prompt:'Solve: 7x + 14 < 0', choices:['x < -2','x > -2','x ≤ -2','x ≥ -2'], answer:0, hint:'Subtract 14, then divide by 7.', explanation:'7x < -14, so x < -2.'},
+  {type:'mc', prompt:'Solve: 8 - 2x > 0', choices:['x < 4','x > 4','x ≤ 4','x ≥ 4'], answer:0, hint:'Subtract 8, then divide by -2 and reverse the sign.', explanation:'-2x > -8, so x < 4.'},
+  {type:'mc', prompt:'Solve: 2(x + 3) ≤ 14', choices:['x ≤ 4','x < 4','x ≥ 4','x > 4'], answer:0, hint:'Distribute first or divide both sides by 2.', explanation:'2x + 6 ≤ 14, so 2x ≤ 8 and x ≤ 4.'},
+  {type:'mc', prompt:'Solve: 3(x - 1) > 12', choices:['x > 5','x < 5','x ≥ 5','x ≤ 5'], answer:0, hint:'Distribute and solve.', explanation:'3x - 3 > 12, so 3x > 15 and x > 5.'},
+  {type:'mc', prompt:'Solve: -4(x + 2) ≥ 8', choices:['x ≤ -4','x ≥ -4','x < -4','x > -4'], answer:0, hint:'Distribute, then divide by -4 and reverse the sign.', explanation:'-4x - 8 ≥ 8, so -4x ≥ 16 and x ≤ -4.'}
+];
+
+const questions = shuffle(questionBank).slice(0, Math.min(30, questionBank.length));
+let index = 0;
+let correct = 0;
+let attempts = 0;
+let timerId = null;
+let gameStarted = false;
+
+const app = document.getElementById('app');
+
+app.innerHTML = `
+  ${buildHeader('Inequality Detective','OST-style inequality solving, sign flips, and multi-step reasoning')}
+  <div class="grid grid-2">
+    <div class="panel side">
+      <h3>Start</h3>
+      <p class="muted">This build focuses on solving one-step and multi-step inequalities, especially recognizing when the inequality sign must reverse.</p>
+      <div class="tools">
+        <label class="small">Student name<br><input id="studentName" class="answer-box" style="min-height:44px" placeholder="Enter student name" /></label>
+        <button class="btn" id="beginBtn">Begin Inequality Detective</button>
+        <a class="btn secondary center" href="../index.html">Back to Hub</a>
+      </div>
+      <div style="margin-top:18px">
+        <div class="small muted">Progress</div>
+        <div class="progress"><span id="progressBar"></span></div>
+      </div>
+      <div class="footer-controls">
+        <button class="btn secondary" id="restartBtn" disabled>Restart</button>
+      </div>
+      <div class="notice" style="margin-top:16px">Hints guide students without giving the final answer. Correct answers auto-advance after the explanation lingers briefly.</div>
+    </div>
+    <div class="panel question" id="stage">
+      <div class="center muted" style="padding:28px 12px">Press <strong>Begin</strong> to start.</div>
+    </div>
+  </div>
+`;
+
+document.getElementById('beginBtn').onclick = startGame;
+document.getElementById('restartBtn').onclick = () => location.reload();
+
+function startGame(){
+  if(gameStarted) return;
+  gameStarted = true;
+
+  document.getElementById('studentNameOut').textContent =
+    document.getElementById('studentName').value.trim() || 'Guest';
+  document.getElementById('startedOut').textContent = todayStamp();
+  document.getElementById('restartBtn').disabled = false;
+
+  if(timerId) clearInterval(timerId);
+  timerId = startTimer(document.getElementById('timerOut'));
+
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = questions[index];
+
+  if(!q){
+    clearInterval(timerId);
+    const stage = document.getElementById('stage');
+    stage.innerHTML = `
+      <div class="center" style="padding:30px 12px">
+        <div class="qnum" style="margin:0 auto 12px;background:var(--good)">✓</div>
+        <h2>Round Complete</h2>
+        <p class="muted">Final accuracy: <strong>${calcAccuracy(correct,attempts)}%</strong> • Correct: <strong>${correct}</strong> / ${questions.length}</p>
+        <div class="footer-controls" style="justify-content:center">
+          <button class="btn" onclick="location.reload()">Play Again</button>
+          <a class="btn secondary" href="../index.html">Back to Hub</a>
+        </div>
+      </div>
+    `;
+    document.getElementById('progressOut').textContent = `${questions.length}/${questions.length}`;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    document.getElementById('progressBar').style.width = '100%';
+    return;
+  }
+
+  document.getElementById('progressOut').textContent = `${index + 1}/${questions.length}`;
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+  document.getElementById('progressBar').style.width = `${(index / questions.length) * 100}%`;
+
+  const labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const items = q.choices.map((c,i) => ({ text:c, idx:i }));
+  q.renderChoices = shuffle(items);
+
+  document.getElementById('stage').innerHTML = `
+    <div class="q-meta">
+      <div class="flex">
+        <div class="qnum">${index + 1}</div>
+        <div>
+          <div class="small muted">Inequality Detective</div>
+          <div class="small">Question ${index + 1} of ${questions.length}</div>
+        </div>
+      </div>
+      <a class="btn secondary" href="../index.html">Exit</a>
+    </div>
+
+    <div class="prompt">${q.prompt}</div>
+
+    <div class="choices">
+      ${q.renderChoices.map((c,i) => `
+        <label class="choice">
+          <input type="radio" name="choice" value="${c.idx}">
+          <span class="choice-label">${labels[i]}</span>
+          <span>${c.text}</span>
+        </label>
+      `).join('')}
+    </div>
+
+    <div class="footer-controls">
+      <button class="btn" id="submitBtn">Check Answer</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  document.getElementById('submitBtn').onclick = checkAnswer;
+}
+
+function showFeedback(type, text){
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback show ${type}`;
+  fb.innerHTML = text;
+}
+
+function lockQuestionInputs(){
+  document.querySelectorAll('input, select, button.kbtn').forEach(el => {
+    el.disabled = true;
+  });
+  const submitBtn = document.getElementById('submitBtn');
+  if(submitBtn) submitBtn.disabled = true;
+}
+
+function markChoicesMC(answerIdx){
+  document.querySelectorAll('.choice').forEach(label => {
+    const input = label.querySelector('input');
+    if(Number(input.value) === answerIdx){
+      label.classList.add('correct');
+    } else if(input.checked){
+      label.classList.add('incorrect');
+    }
+  });
+}
+
+function checkAnswer(){
+  const q = questions[index];
+  attempts++;
+
+  const picked = document.querySelector('input[name="choice"]:checked');
+  if(!picked) return showFeedback('bad','Select one answer first.');
+
+  const ok = Number(picked.value) === q.answer;
+  markChoicesMC(q.answer);
+
+  document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+
+  if(ok){
+    correct++;
+    document.getElementById('accuracyOut').textContent = `${calcAccuracy(correct,attempts)}%`;
+    showFeedback('good', `<strong>Correct.</strong> ${q.explanation}`);
+    lockQuestionInputs();
+    setTimeout(() => {
+      index++;
+      renderQuestion();
+    }, 1900);
+  } else {
+    showFeedback('bad', `<strong>Not yet.</strong> Hint: ${q.hint}<br><span class="muted">Revise your answer and try again.</span>`);
+  }
+}
+</script>
 </body>
 </html>
