@@ -3,12 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Data & Statistics Analyzer — Algebra I OST Mastery</title>
+<title>Data & Statistics Analyzer — OST Mastery</title>
 <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
 
-<div class="wrap" id="app"></div>
+<div class="wrap">
+
+  <div id="startScreen" class="panel">
+    <h2>Data & Statistics Analyzer</h2>
+    <p>Enter your name to begin</p>
+    <input id="studentName" class="answer-box" placeholder="Your name">
+    <br><br>
+    <button class="btn" onclick="startGame()">Start</button>
+  </div>
+
+  <div id="gameScreen" style="display:none">
+
+    <div class="panel hud">
+      <div><b id="nameDisplay"></b></div>
+      <div>Q: <span id="progress">1/30</span></div>
+      <div>Score: <span id="accuracy">0%</span></div>
+      <div>Time: <span id="timer">0:00</span></div>
+      <div>Started: <span id="startTime"></span></div>
+    </div>
+
+    <div class="panel">
+      <div id="questionText"></div>
+      <div id="choices"></div>
+      <button class="btn" onclick="submitAnswer()">Submit</button>
+      <div id="feedback"></div>
+    </div>
+
+  </div>
+
+</div>
 
 <script>
 function shuffle(a){
@@ -20,433 +49,129 @@ function shuffle(a){
   return arr;
 }
 
-function norm(s){
-  return String(s).replace(/\s+/g,'').toLowerCase();
-}
+let seconds=0;
+let timerInterval;
 
-function mean(arr){
-  return arr.reduce((a,b)=>a+b,0)/arr.length;
-}
-
-function median(arr){
-  const s=[...arr].sort((a,b)=>a-b);
-  const mid=Math.floor(s.length/2);
-  return s.length%2 ? s[mid] : (s[mid-1]+s[mid])/2;
-}
-
-function rangeOf(arr){
-  const s=[...arr].sort((a,b)=>a-b);
-  return s[s.length-1]-s[0];
-}
-
-function modeOf(arr){
-  const counts={};
-  let best=null, bestCount=0;
-  arr.forEach(v=>{
-    counts[v]=(counts[v]||0)+1;
-    if(counts[v]>bestCount){
-      best=v;
-      bestCount=counts[v];
-    }
-  });
-  const freq=Object.values(counts).filter(c=>c===bestCount).length;
-  if(bestCount===1 || freq>1) return 'none';
-  return String(best);
-}
-
-function createCalc(inputRef){
-  const wrap=document.createElement('div');
-  const keys=['7','8','9','4','5','6','1','2','3','0','.','⌫','clear'];
-
-  keys.forEach(k=>{
-    const b=document.createElement('button');
-    b.textContent=k;
-    b.className='kbtn';
-    b.onclick=()=>{
-      const el=inputRef();
-      if(!el)return;
-
-      if(k==='⌫'){el.value=el.value.slice(0,-1);return;}
-      if(k==='clear'){el.value='';return;}
-      el.value+=k;
-    };
-    wrap.appendChild(b);
-  });
-
-  return wrap;
-}
-
-function tableHtml(headers, rows){
-  return `
-    <div class="table-box">
-      <table style="width:100%;border-collapse:collapse;background:#fff;color:#111;border-radius:12px;overflow:hidden">
-        <thead>
-          <tr>
-            ${headers.map(h => `<th style="border:1px solid #d7e0f0;padding:10px;background:#eef3fb">${h}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(r => `
-            <tr>
-              ${r.map(c => `<td style="border:1px solid #d7e0f0;padding:10px;text-align:center">${c}</td>`).join('')}
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function scatterSvg(points){
-  const w=300, h=220, pad=28;
-  const maxX=10, maxY=10;
-
-  let svg=`<div class="graph-box"><svg viewBox="0 0 ${w} ${h}">`;
-  svg+=`<rect x="0" y="0" width="${w}" height="${h}" fill="white"/>`;
-
-  for(let i=0;i<=10;i++){
-    const x=pad + i*((w-2*pad)/10);
-    const y=pad + i*((h-2*pad)/10);
-    svg+=`<line x1="${x}" y1="${pad}" x2="${x}" y2="${h-pad}" stroke="#e8eef8"/>`;
-    svg+=`<line x1="${pad}" y1="${y}" x2="${w-pad}" y2="${y}" stroke="#e8eef8"/>`;
-  }
-
-  svg+=`<line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#111" stroke-width="2"/>`;
-  svg+=`<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#111" stroke-width="2"/>`;
-
-  for(let i=0;i<=10;i++){
-    const x=pad + i*((w-2*pad)/10);
-    const y=h-pad - i*((h-2*pad)/10);
-    if(i<10){
-      svg+=`<text x="${x-3}" y="${h-pad+15}" font-size="10" fill="#334">${i}</text>`;
-      svg+=`<text x="${pad-16}" y="${y+4}" font-size="10" fill="#334">${i}</text>`;
-    }
-  }
-
-  points.forEach(([x,y])=>{
-    const px=pad + x*((w-2*pad)/10);
-    const py=h-pad - y*((h-2*pad)/10);
-    svg+=`<circle cx="${px}" cy="${py}" r="4.5" fill="#d43f3a"/>`;
-  });
-
-  svg+=`</svg></div>`;
-  return svg;
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const m=Math.floor(seconds/60);
+    const s=seconds%60;
+    document.getElementById('timer').textContent =
+      m + ":" + (s<10?"0":"") + s;
+  },1000);
 }
 
 const bank = [
-
-{type:'mc',
-q:`What is the mean of 4, 6, 8, 10?`,
-choices:['7','6','8','9'],
-a:0,
-exp:'(4+6+8+10) ÷ 4 = 7'
-},
-
-{type:'input',
-q:`Find the median of 3, 5, 7, 9, 11`,
-a:['7'],
-exp:'The middle number is 7'
-},
-
-{type:'mc',
-q:`What is the range of 2, 5, 8, 10?`,
-choices:['8','10','6','12'],
-a:0,
-exp:'10 - 2 = 8'
-},
-
-{type:'mc',
-q:`What is the mode of 2, 3, 3, 4, 5?`,
-choices:['3','4','2','none'],
-a:0,
-exp:'3 appears most often'
-},
-
-{type:'input',
-q:`Find the mean of 5, 5, 7, 9`,
-a:['6.5'],
-exp:'(5+5+7+9) ÷ 4 = 6.5'
-},
-
-{type:'mc',
-q:`Which measure is most affected by an outlier?`,
-choices:['Mean','Median','Mode','Range only'],
-a:0,
-exp:'Outliers pull the mean'
-},
-
-{type:'mc',
-q:`Find the median of 2, 4, 6, 8`,
-choices:['5','6','4','8'],
-a:0,
-exp:'Middle two are 4 and 6, average = 5'
-},
-
-{type:'input',
-q:`What is the range of 12, 15, 19, 25?`,
-a:['13'],
-exp:'25 - 12 = 13'
-},
-
-{type:'mc',
-q:`Which data set has a mode of 6?`,
-choices:[
-'4, 6, 6, 8, 10',
-'4, 5, 6, 7, 8',
-'6, 7, 7, 8, 8',
-'5, 5, 6, 6, 7'
-],
-a:0,
-exp:'Only 6 appears most often there'
-},
-
-{type:'input',
-q:`Find the mean of 10, 20, 30`,
-a:['20'],
-exp:'60 ÷ 3 = 20'
-},
-
-{type:'mc',
-q:`If a data set has one very large outlier, which measure is usually best for center?`,
-choices:['Median','Mean','Range','Mode'],
-a:0,
-exp:'Median resists outliers'
-},
-
-{type:'tablemc',
-table:{
-headers:['Student','Score'],
-rows:[['A',6],['B',8],['C',10],['D',12]]
-},
-q:`Using the table, what is the mean score?`,
-choices:['9','8','10','12'],
-a:0,
-exp:'(6+8+10+12) ÷ 4 = 9'
-},
-
-{type:'input',
-q:`Find the median of 1, 2, 2, 4, 9`,
-a:['2'],
-exp:'The middle value is 2'
-},
-
-{type:'mc',
-q:`What is the range of 14, 14, 14, 20?`,
-choices:['6','20','14','0'],
-a:0,
-exp:'20 - 14 = 6'
-},
-
-{type:'mc',
-q:`Which statement is true about the mean and median?`,
-choices:[
-'They can be different',
-'They are always the same',
-'The median is always larger',
-'The mean is always a whole number'
-],
-a:0,
-exp:'They are often different'
-},
-
-{type:'input',
-q:`Find the mode of 4, 4, 6, 6, 8`,
-a:['none'],
-exp:'There is no single mode because 4 and 6 tie'
-},
-
-{type:'mc',
-q:`Which scatterplot trend is shown here?<br>${scatterSvg([[1,2],[2,3],[3,4],[4,5],[5,6]])}`,
-choices:['Positive association','Negative association','No association','Nonlinear only'],
-a:0,
-exp:'As x increases, y increases'
-},
-
-{type:'mc',
-q:`Which scatterplot trend is shown here?<br>${scatterSvg([[1,8],[2,7],[3,6],[4,5],[5,4]])}`,
-choices:['Negative association','Positive association','No association','Constant association'],
-a:0,
-exp:'As x increases, y decreases'
-},
-
-{type:'mc',
-q:`Which scatterplot trend is shown here?<br>${scatterSvg([[1,4],[2,8],[3,3],[4,7],[5,5]])}`,
-choices:['No clear association','Positive association','Negative association','Perfect line'],
-a:0,
-exp:'The points do not follow a clear trend'
-},
-
-{type:'input',
-q:`Find the mean of 2, 6, 10, 14`,
-a:['8'],
-exp:'32 ÷ 4 = 8'
-},
-
-{type:'tablemc',
-table:{
-headers:['Day','Visitors'],
-rows:[['Mon',12],['Tue',16],['Wed',18],['Thu',14]]
-},
-q:`What is the range of visitors?`,
-choices:['6','18','4','2'],
-a:0,
-exp:'18 - 12 = 6'
-},
-
-{type:'mc',
-q:`A data set is 3, 4, 5, 6, 30. Which measure best describes the center?`,
-choices:['Median','Mean','Range','Mode'],
-a:0,
-exp:'30 is an outlier, so median is better'
-},
-
-{type:'input',
-q:`Find the median of 5, 8, 8, 9, 12, 14`,
-a:['8.5'],
-exp:'Middle two are 8 and 9, average = 8.5'
-},
-
-{type:'mc',
-q:`If two data sets have the same mean, they`,
-choices:[
-'Can still have different spreads',
-'Must have the same range',
-'Must have the same median',
-'Must be identical'
-],
-a:0,
-exp:'Same center does not mean same spread'
-},
-
-{type:'input',
-q:`What is the range of 1, 3, 7, 9, 10?`,
-a:['9'],
-exp:'10 - 1 = 9'
-},
-
-{type:'mc',
-q:`Which is most likely an outlier in the set 5, 6, 6, 7, 8, 30?`,
-choices:['30','8','7','6'],
-a:0,
-exp:'30 is far from the rest'
-},
-
-{type:'tablemc',
-table:{
-headers:['x','y'],
-rows:[[1,2],[2,4],[3,6],[4,8]]
-},
-q:`What kind of association does the table suggest?`,
-choices:['Positive','Negative','None','Cannot tell'],
-a:0,
-exp:'As x increases, y also increases'
-},
-
-{type:'input',
-q:`Find the mean of 9, 11, 13, 15, 17`,
-a:['13'],
-exp:'65 ÷ 5 = 13'
-},
-
-{type:'mc',
-q:`What is the median of 4, 4, 5, 9, 10?`,
-choices:['5','4','6','9'],
-a:0,
-exp:'The middle value is 5'
-},
-
-{type:'mc',
-q:`Which measure tells how spread out a data set is using highest minus lowest?`,
-choices:['Range','Mean','Median','Mode'],
-a:0,
-exp:'Range = maximum - minimum'
-}
-
+  {q:"What is the mean of 4, 6, 8, 10?", choices:["7","6","8","9"], a:0, hint:"Add the numbers and divide by 4.", exp:"(4 + 6 + 8 + 10) ÷ 4 = 7."},
+  {q:"What is the median of 3, 5, 7, 9, 11?", choices:["7","5","8","9"], a:0, hint:"The median is the middle value in an ordered list.", exp:"The middle value is 7."},
+  {q:"What is the range of 2, 5, 8, 10?", choices:["8","10","6","12"], a:0, hint:"Subtract the smallest value from the largest.", exp:"10 - 2 = 8."},
+  {q:"What is the mode of 2, 3, 3, 4, 5?", choices:["3","4","2","5"], a:0, hint:"The mode is the value that appears most often.", exp:"3 appears most often."},
+  {q:"What is the mean of 5, 5, 7, 9?", choices:["6.5","6","7","6.25"], a:0, hint:"Add the values and divide by 4.", exp:"(5 + 5 + 7 + 9) ÷ 4 = 26 ÷ 4 = 6.5."},
+  {q:"Which measure of center is most affected by an outlier?", choices:["Mean","Median","Mode","Range"], a:0, hint:"Think about which value uses every number in the set.", exp:"The mean uses all values, so it is most affected by outliers."},
+  {q:"What is the median of 2, 4, 6, 8?", choices:["5","6","4","8"], a:0, hint:"For an even number of values, average the two middle numbers.", exp:"(4 + 6) ÷ 2 = 5."},
+  {q:"What is the range of 12, 15, 19, 25?", choices:["13","10","15","7"], a:0, hint:"Largest minus smallest.", exp:"25 - 12 = 13."},
+  {q:"Which data set has a mode of 6?", choices:["4, 6, 6, 8, 10","4, 5, 6, 7, 8","6, 7, 7, 8, 8","5, 5, 6, 6, 7"], a:0, hint:"Look for the set where 6 appears more than any other value.", exp:"Only the first set has 6 as the single most frequent value."},
+  {q:"What is the mean of 10, 20, 30?", choices:["20","15","25","30"], a:0, hint:"Add and divide by 3.", exp:"(10 + 20 + 30) ÷ 3 = 60 ÷ 3 = 20."},
+  {q:"If a data set has one very large outlier, which measure is usually best for center?", choices:["Median","Mean","Mode","Range"], a:0, hint:"Choose the measure least influenced by extreme values.", exp:"The median is less affected by outliers."},
+  {q:"A set of scores is 6, 8, 10, 12. What is the mean?", choices:["9","8","10","12"], a:0, hint:"Add all scores and divide by 4.", exp:"(6 + 8 + 10 + 12) ÷ 4 = 36 ÷ 4 = 9."},
+  {q:"What is the median of 1, 2, 2, 4, 9?", choices:["2","1","4","3"], a:0, hint:"Identify the middle number.", exp:"The middle value is 2."},
+  {q:"What is the range of 14, 14, 14, 20?", choices:["6","20","14","0"], a:0, hint:"Subtract the smallest value from the largest.", exp:"20 - 14 = 6."},
+  {q:"Which statement is true about the mean and median?", choices:["They can be different","They are always the same","The mean is always larger","The median is always a decimal"], a:0, hint:"Different data shapes can change the values.", exp:"The mean and median can be different."},
+  {q:"What is the mode of 4, 4, 6, 6, 8?", choices:["There is no single mode","4","6","8"], a:0, hint:"Check whether more than one value appears most often.", exp:"Both 4 and 6 appear twice, so there is no single mode."},
+  {q:"If points on a scatterplot rise from left to right, what type of association is shown?", choices:["Positive association","Negative association","No association","Zero association"], a:0, hint:"As x increases, y also increases.", exp:"That pattern shows a positive association."},
+  {q:"If points on a scatterplot fall from left to right, what type of association is shown?", choices:["Negative association","Positive association","No association","Constant association"], a:0, hint:"As x increases, y decreases.", exp:"That pattern shows a negative association."},
+  {q:"If a scatterplot has no clear trend, what type of association is shown?", choices:["No clear association","Positive association","Negative association","Perfect association"], a:0, hint:"The points do not rise or fall together consistently.", exp:"That means there is no clear association."},
+  {q:"What is the mean of 2, 6, 10, 14?", choices:["8","6","10","7"], a:0, hint:"Add the numbers and divide by 4.", exp:"(2 + 6 + 10 + 14) ÷ 4 = 32 ÷ 4 = 8."},
+  {q:"A set of visitors is 12, 16, 18, 14. What is the range?", choices:["6","4","18","2"], a:0, hint:"Largest minus smallest.", exp:"18 - 12 = 6."},
+  {q:"A data set is 3, 4, 5, 6, 30. Which measure best describes the center?", choices:["Median","Mean","Mode","Range"], a:0, hint:"Choose the measure that resists the outlier 30.", exp:"The median is best because 30 is an outlier."},
+  {q:"What is the median of 5, 8, 8, 9, 12, 14?", choices:["8.5","8","9","10"], a:0, hint:"Average the two middle values.", exp:"(8 + 9) ÷ 2 = 8.5."},
+  {q:"If two data sets have the same mean, what can still be different?", choices:["Their spread","Their total number of values must be the same","Their median must be the same","Their values must be identical"], a:0, hint:"Center and spread are not the same idea.", exp:"Two sets can have the same mean but different spread."},
+  {q:"What is the range of 1, 3, 7, 9, 10?", choices:["9","10","7","8"], a:0, hint:"Subtract the smallest value from the largest.", exp:"10 - 1 = 9."},
+  {q:"Which value is most likely an outlier in 5, 6, 6, 7, 8, 30?", choices:["30","8","7","6"], a:0, hint:"Look for the value far away from the rest.", exp:"30 is much larger than the others, so it is the outlier."},
+  {q:"If x-values and y-values both increase together in a table, what kind of association is suggested?", choices:["Positive","Negative","None","Impossible to determine"], a:0, hint:"As one variable increases, the other does too.", exp:"That suggests a positive association."},
+  {q:"What is the mean of 9, 11, 13, 15, 17?", choices:["13","12","14","15"], a:0, hint:"Add the numbers and divide by 5.", exp:"(9 + 11 + 13 + 15 + 17) ÷ 5 = 65 ÷ 5 = 13."},
+  {q:"What is the median of 4, 4, 5, 9, 10?", choices:["5","4","6","9"], a:0, hint:"The median is the middle value.", exp:"The middle value is 5."},
+  {q:"Which measure of spread is found by subtracting the smallest value from the largest value?", choices:["Range","Mean","Median","Mode"], a:0, hint:"This measure tells how wide the data set is.", exp:"The range is maximum minus minimum."}
 ];
 
-const questions = shuffle(bank).slice(0,30);
-let i=0, correct=0, attempts=0, activeInput=null;
+let questions = shuffle(bank);
+let current=0;
+let correct=0;
+let attempts=0;
 
-const app=document.getElementById('app');
+function startGame(){
+  const name=document.getElementById('studentName').value.trim();
+  if(!name) return;
 
-function render(){
-  const q=questions[i];
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('gameScreen').style.display='block';
 
-  if(!q){
-    app.innerHTML=`<div class="panel"><h2>Complete!</h2>
-    <p>Accuracy: ${Math.round(correct/attempts*100)}%</p></div>`;
-    return;
-  }
+  document.getElementById('nameDisplay').textContent=name;
+  document.getElementById('startTime').textContent=new Date().toLocaleTimeString();
 
-  let html=`<div class="panel">
-  <h2>Question ${i+1}/30</h2>`;
-
-  if(q.table){
-    html+=tableHtml(q.table.headers, q.table.rows);
-  }
-
-  html+=`<div class="prompt">${q.q}</div>`;
-
-  if(q.type==='mc' || q.type==='tablemc'){
-    const choices=shuffle(q.choices.map((c,idx)=>({c,idx})));
-    q._choices=choices;
-
-    html+=choices.map(c=>`
-    <label class="choice">
-      <input type="radio" name="c" value="${c.idx}">
-      ${c.c}
-    </label>`).join('');
-
-    html+=`<div class="footer-controls"><button class="btn" id="submit">Submit</button></div>`;
-  }
-
-  if(q.type==='input'){
-    html+=`
-      <div class="answer-row"><input id="input" class="answer-box"></div>
-      <div id="calc"></div>
-      <div class="footer-controls"><button class="btn" id="submit">Submit</button></div>`;
-  }
-
-  html+=`<div id="feedback" class="feedback" style="display:block"></div></div>`;
-  app.innerHTML=html;
-
-  if(q.type==='input'){
-    activeInput=document.getElementById('input');
-    document.getElementById('calc').appendChild(createCalc(()=>activeInput));
-  }
-
-  document.getElementById('submit').onclick=check;
+  startTimer();
+  loadQuestion();
 }
 
-function check(){
-  const q=questions[i];
+function loadQuestion(){
+  const q=questions[current];
+  document.getElementById('questionText').innerHTML=q.q;
+
+  const shuffled = shuffle(q.choices.map((c,i)=>({c,i})));
+  q._map = shuffled;
+
+  document.getElementById('choices').innerHTML = shuffled.map(c=>`
+    <label class="choice">
+      <input type="radio" name="c" value="${c.i}">
+      ${c.c}
+    </label>
+  `).join('');
+
+  document.getElementById('progress').textContent = (current+1)+"/30";
+  document.getElementById('accuracy').textContent =
+    attempts ? Math.round((correct/attempts)*100)+"%" : "0%";
+
+  document.getElementById('feedback').innerHTML="";
+}
+
+function submitAnswer(){
+  const q=questions[current];
+  const sel=document.querySelector('input[name="c"]:checked');
+  if(!sel) return;
+
   attempts++;
-  let ok=false;
-
-  if(q.type==='mc' || q.type==='tablemc'){
-    const sel=document.querySelector('input[name="c"]:checked');
-    if(!sel) return;
-    ok=Number(sel.value)===q.a;
-  }
-
-  if(q.type==='input'){
-    ok=q.a.some(a=>norm(a)===norm(activeInput.value));
-  }
-
+  const isCorrect = Number(sel.value)===q.a;
   const fb=document.getElementById('feedback');
 
-  if(ok){
+  if(isCorrect){
     correct++;
-    fb.innerHTML="Correct! " + q.exp;
-    fb.className='feedback show good';
-    setTimeout(()=>{i++;render();},1500);
+    fb.innerHTML = `<span class="good">Correct!</span> ${q.exp}`;
+
+    setTimeout(()=>{
+      current++;
+      if(current>=30){
+        endGame();
+      }else{
+        loadQuestion();
+      }
+    },1800);
+
   }else{
-    fb.innerHTML="Try again: " + q.exp;
-    fb.className='feedback show bad';
+    fb.innerHTML = `<span class="bad">Try again:</span> ${q.hint}`;
   }
 }
 
-render();
+function endGame(){
+  clearInterval(timerInterval);
+
+  document.getElementById('gameScreen').innerHTML = `
+    <div class="panel">
+      <h2>Complete</h2>
+      <p>Accuracy: ${Math.round((correct/attempts)*100)}%</p>
+    </div>
+  `;
+}
 </script>
 
 </body>
